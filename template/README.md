@@ -41,6 +41,7 @@ It routes to the right knowledge and defines what is safe to act on.
 | `OPEN-QUESTIONS.md` | Things we don't yet understand |
 | `WRITING-STYLE.md` | Writing rules for non-native readers; diagram guidance |
 | `EXAMPLES.md` | Illustrative examples (Chromium, monorepos, forks) |
+| `tools/` | Optional automation (e.g. `check-doc-drift.sh` for CI drift detection) |
 | `logs/` | Per-session detailed logs |
 
 ## How Far Along Are We?

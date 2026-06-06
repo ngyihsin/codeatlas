@@ -380,6 +380,8 @@ Run this phase periodically — every few weeks, or after the upstream codebase 
 
 ### Steps
 
+0. **Run the drift check first.** `tools/check-doc-drift.sh` (see `tools/README.md`) lists which notes cite code paths that changed since the last verification. This narrows the manual work below to exactly the entries at risk. In CI, this runs on every pull request that touches the codebase.
+
 1. For each file path referenced in CONCEPTS.md and FLOWS.md:
    - Read the "Last verified against commit: <hash>" annotation. If the annotation is missing, the entry was not properly recorded in Phase 4 or 5 — flag it.
    - Run `git -C <codebase> log <hash>..HEAD -- <file_path>`.

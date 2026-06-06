@@ -52,6 +52,9 @@ template/
   WRITING-STYLE.md            # Writing rules for non-native readers + diagrams
   EXAMPLES.md                 # Illustrative examples (Chromium, monorepos, forks)
   README.md                   # This file (in template form, project-specific)
+  tools/
+    check-doc-drift.sh        # CI/local check: flags notes that cite changed code
+    README.md                 # How to run it locally and in GitHub Actions
   logs/
     SESSION-LOG-TEMPLATE.md   # Format for each session log
 ```

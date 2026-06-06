@@ -81,7 +81,7 @@ template, so "write good docs" becomes "fill these files to this standard."
 | 4 | **At least one end-to-end flow** | One concrete user-visible action traced across every module and process it touches, including its primary error branch. | `FLOWS.md` |
 | 5 | **The hard concepts and key data structures, deep** | The 3–7 abstractions and the load-bearing data structures a newcomer cannot guess, each explained from contract down to code, with a worked API example. See "Documenting a Major Subsystem." | `CONCEPTS.md` |
 | 6 | **A task → location map** | "I need to change X — where do I look?" answered as a table. Plus ownership and dependency rules. | `CLAUDE.md`, `OVERVIEW.md` |
-| 7 | **Provenance and drift control** | Every claim is anchored to a commit hash and re-verified on a schedule. | Verification tags, Phase 7 |
+| 7 | **Provenance and drift control** | Every claim is anchored to a commit hash and re-verified on a schedule — ideally enforced by a CI check that flags when cited code changes. | Verification tags, Phase 7, `tools/check-doc-drift.sh` |
 | 8 | **Honest about its own gaps** | Verified knowledge is separated from guesses. What is *not* understood is written down, not hidden. | `✓ / ◐ / ?` tags, `OPEN-QUESTIONS.md` |
 | 9 | **A common-tasks how-to** | The 3–5 things a new hire does in week one — build, run, test, land a one-line change — as copy-pasteable steps with expected output. | `OVERVIEW.md` or a `HOW-TO.md` |
 
@@ -209,11 +209,19 @@ To serve consuming skills, the document set must provide:
    concept that explains it. A change that violates an invariant is a bug even if the
    tests pass. This is the single most valuable thing you can give a skill that edits
    code.
-4. **Task recipes.** For each of fix / feature / design-doc: what to read, what to
-   extract, which guardrails to honor, and what to write back. (See `INDEX.md`.)
-5. **A write-back loop.** When a consuming skill changes the code or learns
-   something, it updates the cited doc and its provenance. A knowledge base only the
-   authors maintain drifts between sessions; consumers keep it true.
+4. **Task recipes.** For each job a digital colleague does — fix a bug, build a
+   feature, write a design doc, review a change, respond to an incident, generate
+   tests, refactor/migrate, explain to a human, analyze impact — what to read, what
+   to extract, which guardrails to honor, and what to write back. (See `INDEX.md`.)
+5. **A consumer contract.** A versioned schema so any skill parses `INDEX.md` the
+   same way, plus safety boundaries: what a skill may read, edit, or escalate, and
+   the rule to re-verify before acting and write back after. (See `INDEX.md` →
+   "Consumer Contract".)
+6. **A write-back loop and drift control.** When a consuming skill changes the code
+   or learns something, it updates the cited doc and its provenance. A CI check
+   (`tools/check-doc-drift.sh`) flags when a change touches cited code, so drift is
+   caught at the source, not months later. A knowledge base only the authors
+   maintain rots between sessions; consumers and automation keep it true.
 
 The design-doc case is the bridge to `docforge`: these docs are **code →
 understanding**; a design doc is **design → code**. A design skill reads the
