@@ -120,9 +120,14 @@ src/
   ...
 ```
 
+### Side Deliverable: Draft HOW-TO.md
+
+Once the build system and entry points are known (Phase 1) and the structure is mapped (Phase 2), draft `HOW-TO.md` — the common first-week tasks (build, run, one test, land a one-line change). This is a **how-to** doc: procedural steps only, no *why*. Draft the commands now; mark its status `◐` and verify each command `✓` the first time you actually run it on a clean checkout. A how-to that has not been run is not yet trustworthy. See `STANDARD.md` → Trait 9.
+
 ### Done Criteria
 
 - OVERVIEW.md has the structural map
+- HOW-TO.md drafted (commands may still be `◐` until first run)
 - ONBOARD-CHECKLIST.md Phase 2 ticked
 - HANDOFF.md updated with "next: Phase 3 (Reverse Recommendation)"
 

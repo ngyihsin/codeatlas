@@ -47,10 +47,22 @@ When code and this document disagree, the code wins. Update this doc; do not ign
 
 ### Concept: _<Name>_
 
-**Tag:** ◐ Read-only
-**Embodying file:** `path/to/file.ext:42-87`
-**Last verified against commit:** _(short hash — required. Phase 7 cannot drift-check without it.)_
+**Doc type:** explanation (concept / data structure)
+**Audience:** _(who needs this concept; what they already know)_
+**You are assumed to know:** _(prerequisite concepts)_
+**Before you begin:** _(none, or "read Concept #X first")_
+**Owner:** _(who keeps this true)_
+**Anchor:** `path/to/file.ext` → `SymbolName` (search `"<stable search string>"`)
+**Last verified against commit:** _(short hash — required. Phase 7 cannot drift-check without it.)_   **Status:** ✓ / ◐ / ?
 **Last verified date:** _(YYYY-MM-DD)_
+
+> Prefer a stable anchor (`file + symbol + search-string`) over a bare
+> `path:line`. Line numbers drift, and an agent reader acts on a stale one
+> literally. See `STANDARD.md` → "Writing for Agent Readers".
+
+#### Concrete Example First
+
+_(Show one real call, command, or value before any abstraction. The reader pattern-matches off the concrete. Keep it short.)_
 
 #### Analogy
 
@@ -59,6 +71,30 @@ _(1-2 paragraphs. Explain without code, using a metaphor from daily life. This i
 #### Plain-Language Explanation
 
 _(2-4 paragraphs. What it does, why it exists, how it fits into the system. Short sentences. Define every term on first use.)_
+
+#### Key Data Structure (required for a load-bearing subsystem)
+
+_(For a central subsystem, the data structure IS the design. Skip this section only if the concept has no significant data structure. See `STANDARD.md` → "Documenting a Major Subsystem" and the worked `task_struct` entry in `EXAMPLES.md`.)_
+
+Anchor: `path/to/header.ext` → `StructName` (search `"<stable search string>"`).
+
+| Field | Type | Role | Invariant / lifetime |
+|---|---|---|---|
+| | | | |
+
+**Why it is shaped this way:** _(tie each structural choice to the constraint that forced it — memory, concurrency, performance, compatibility. Include the rejected alternative only if recoverable from history or comments; otherwise mark it `?`. Never invent a rationale.)_
+
+#### API Usage (required if there is a public-ish API)
+
+_(Real calling code. Explain the non-obvious calls by the rationale above — the reader should see the design pay off in how the API must be called.)_
+
+```
+<minimal worked example calling into this concept>
+```
+
+#### Deviation Callout (for agent readers)
+
+_(State where this departs from the common pattern an agent's prior would assume — e.g., "intrusive list, not container-of-pointers." Omit if there is no surprising deviation.)_
 
 #### Diagram
 

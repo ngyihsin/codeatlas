@@ -44,6 +44,7 @@ template/
   OVERVIEW.md                 # What the project is, top-level structure (Phase 1-2)
   CONCEPTS.md                 # Core abstractions and which files embody them (Phase 3-4)
   FLOWS.md                    # Important call chains and user-visible flows (Phase 5)
+  HOW-TO.md                   # Copy-pasteable steps for common first-week tasks (build, run, test, change)
   CLAUDE.md                   # Distilled context for every session (Phase 6, ~200 lines)
   HANDOFF.md                  # Current understanding state, next exploration target
   OPEN-QUESTIONS.md           # Things not yet understood, with confidence levels
@@ -113,6 +114,7 @@ If yes, your docs are honest. If no, something didn't get distilled.
 | **OVERVIEW.md** | What the project is, top-level structure | Phase 1-2 |
 | **CONCEPTS.md** | Core abstractions and embodying files | Phase 3-4, ongoing |
 | **FLOWS.md** | Concrete call chains | Phase 5, ongoing |
+| **HOW-TO.md** | Common first-week tasks, as copy-pasteable steps | After Phase 1-2, kept working |
 | **CLAUDE.md** | Per-session boot context (≤200 lines) | Phase 6, revised continuously |
 | **HANDOFF.md** | Current state, next target, verified-vs-speculative | Every session |
 | **OPEN-QUESTIONS.md** | What we don't yet understand | Every session |

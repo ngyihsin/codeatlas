@@ -30,6 +30,7 @@ That's it. Everything else is described inside `AGENT-warm-up.md`.
 | `OVERVIEW.md` | What the project is, top-level structure |
 | `CONCEPTS.md` | Core abstractions, deep-dived |
 | `FLOWS.md` | Concrete call chains for user-visible behaviors |
+| `HOW-TO.md` | Copy-pasteable steps for the common first-week tasks (build, run, test, land a change) |
 | `CLAUDE.md` | ≤200-line per-session bootstrap context |
 | `HANDOFF.md` | Last session summary, next step, session-state sentinel |
 | `OPEN-QUESTIONS.md` | Things we don't yet understand |
