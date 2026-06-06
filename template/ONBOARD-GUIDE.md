@@ -220,7 +220,13 @@ Replace the placeholder from Phase 3 with:
 
 ### Quality Bar
 
-The entry is done when it matches `STANDARD.md` → "What L3 looks like → CONCEPTS.md": analogy, then a `path:line` walkthrough, a link to the flow that exercises it, and a clear statement of **what the reader would misunderstand without this concept**. An entry that cannot name what breaks in the reader's mental model is not yet L3.
+The entry is done when it matches `STANDARD.md` → "What L3 looks like → CONCEPTS.md" and, for a central subsystem, "Documenting a Major Subsystem":
+
+- Opens with the standard header (type, audience, prerequisites, owner, verified commit).
+- Leads with a concrete example, then the contract.
+- For a load-bearing subsystem, documents the **key data structure** (fields, invariants, lifetime), explains **why it is shaped that way**, and shows a **worked API call**. An entry for a central subsystem missing the data structure or a usage example caps at L2.
+- Uses **stable anchors** (`file + symbol + search-string`), not bare line numbers — an agent reader acts on a stale `:LINE` literally.
+- States **what the reader would misunderstand without this concept**, including any place the project deviates from the common pattern an agent would assume.
 
 ### Done Criteria
 
@@ -295,7 +301,7 @@ sequenceDiagram
 
 ### Quality Bar
 
-This is the "Life of a Pixel" artifact — the single highest-value document for a large codebase (see `STANDARD.md`). The flow is done when a reader could **set a breakpoint at any step from the citation alone**, knows which steps cross a process or thread boundary, and can tell IPC from a direct call. That is the L3 bar for FLOWS.md.
+This is the "Life of a Pixel" artifact — the single highest-value document for a large codebase (see `STANDARD.md`). Follow Chromium's real lesson: **choose one canonical path and omit aggressively** — do not trace everything. The flow is done when a reader could **set a breakpoint at any step from the citation alone**, knows which steps cross a process or thread boundary, can tell IPC from a direct call, and can see the **primary error / early-exit branch** (where readers actually get stuck). That is the L3 bar for FLOWS.md.
 
 ### Done Criteria
 

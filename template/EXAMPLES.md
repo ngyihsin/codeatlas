@@ -98,3 +98,106 @@ classDiagram
 ```
 
 This communicates ownership relationships faster than a prose description, especially for readers whose first language is not English.
+
+## Example: Documenting a Key Data Structure (Linux `task_struct`)
+
+For a systems codebase, the load-bearing data structures *are* the architecture. A
+professional `CONCEPTS.md` entry for one includes three things: the structure's
+fields and invariants, **why** it is shaped that way, and a **worked API example**.
+See `STANDARD.md` → "Documenting a Major Subsystem".
+
+This example is **illustrative**. Symbol and file names are real and stable; line
+numbers are intentionally omitted because they drift — cite `file + symbol +
+search-string` so an agent reader does not act on a stale line. (See `STANDARD.md`
+→ "Writing for Agent Readers".)
+
+````markdown
+# Concept: task_struct — the process descriptor
+
+**Doc type:** explanation (data structure)
+**Audience:** new kernel contributor who knows C and basic OS theory
+**You are assumed to know:** what a process and a thread are
+**Before you begin:** a kernel checkout; `git grep` working
+**Owner:** @kernel-onboarding
+**Last verified against commit:** _(fill from your tree)_   **Status:** ◐ Read-only
+
+## In one line
+
+`task_struct` is the kernel's per-task record: one exists for every thread, and it
+holds everything the kernel needs to schedule, account, and tear down that task.
+
+## The data structure
+
+Anchor: `include/linux/sched.h` → `struct task_struct` (search `struct task_struct {`).
+
+| Field | Type | Role | Invariant / lifetime |
+|---|---|---|---|
+| `__state` | `unsigned int` | Run state (`TASK_RUNNING`, …) | Changed only under the run-queue lock |
+| `pid` / `tgid` | `pid_t` | Thread id / thread-group (userspace) id | `tgid` == `pid` of the group leader |
+| `tasks` | `struct list_head` | Node linking *every* task | Walked under `rcu_read_lock` |
+| `children`, `sibling` | `struct list_head` | Process hierarchy | Written under `tasklist_lock` |
+| `mm` | `struct mm_struct *` | Address space | `NULL` for kernel threads |
+| `cred` | `const struct cred *` | Credentials | RCU-protected; never mutated in place |
+| `comm[16]` | `char[]` | Short name | Always NUL-terminated, ≤15 chars |
+
+## Why it is shaped this way
+
+1. **One monolithic descriptor per task.** A single allocation keeps the task
+   pointer stable and lets every subsystem reach all task state from one pointer.
+   The cost is a large struct; the benefit is no scattered per-task lookups on hot
+   paths. ◐
+2. **Intrusive lists (`list_head`), not container-of-pointers.** The node is
+   embedded in the task. **Why:** O(1) removal given only the task, no separate
+   node allocation, and the same task can sit on many lists at once (the global
+   task list, a run queue, a wait queue). ◐
+   - *Rejected alternative (recoverable from the idiom's design):* external
+     node-based lists add an allocation per membership and a pointer chase on
+     removal. Intrusive lists trade a little type-safety for zero-alloc, O(1) churn
+     — the right trade on the scheduler's hot path.
+3. **RCU for read-mostly fields (`cred`, task-list traversal).** Readers vastly
+   outnumber writers and run where they must not block. RCU gives lock-free reads;
+   writers publish a new object and free the old one after a grace period — which is
+   *why* `cred` is never mutated in place. ◐
+
+## Using the API (worked example)
+
+Iterate every process and print its pid and name. The RCU discipline below is forced
+by the design above — this is the payoff of understanding *why*.
+
+```c
+#include <linux/sched.h>
+#include <linux/sched/signal.h>   /* for_each_process */
+
+struct task_struct *p;
+
+rcu_read_lock();                  /* REQUIRED: the task list is RCU-walked   */
+for_each_process(p) {             /* macro: list iteration anchored at init_task */
+    pr_info("%-16s pid=%d tgid=%d\n",
+            p->comm,              /* safe: inline array, always valid        */
+            task_pid_nr(p),       /* use this, NOT p->pid: namespace-correct  */
+            p->tgid);
+}
+rcu_read_unlock();
+```
+
+**Why the calls are shaped this way:** you never index the task list by hand —
+`for_each_process` hides the list anchor and the `container_of` math. Use
+`task_pid_nr(p)` rather than `p->pid` to get a namespace-correct id. The
+`rcu_read_lock()` / `rcu_read_unlock()` pair is **not optional**: drop it and a
+concurrent `exit()` can free a task mid-walk.
+
+## Deviation callout (for agent readers)
+
+This is an **intrusive** list (the `list_head` lives inside `task_struct`), **not**
+a container-of-pointers list. Do not assume standard-library iterator semantics.
+
+## Known gaps
+
+- ? Exact locking rules for `cred` updates beyond "RCU" — not traced here.
+````
+
+Why this entry is L3: it leads with a concrete example, gives the data structure as
+a scannable table with invariants, ties each design choice to the constraint that
+forced it, shows a real API call whose every line is explained by that rationale,
+and marks its one unknown honestly.
+

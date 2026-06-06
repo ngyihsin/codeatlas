@@ -142,10 +142,17 @@ how the largest open codebases actually document themselves:
   constellation, parallel layout, WebRender) a newcomer cannot guess. *Lesson:
   name the load-bearing concepts and explain the surprising design choice.*
 
-`STANDARD.md` turns these into eight required traits, a maturity rubric (L0 stub →
-L3 professional) for grading each document, and a definition of done for the whole
-notes directory. **Read it before Phase 1 and re-read it before Phase 6.** The
-phases below are how you get there; the standard is how you know you arrived.
+`STANDARD.md` turns these into nine required traits, a maturity rubric (L0 stub →
+L3 professional) for grading each document, and a definition of done measured by
+*outcomes* (can a new hire build, answer cold questions, and land a change from the
+docs alone?). It also covers two things easy to miss: **documenting the key data
+structures** of a subsystem — their fields, *why* they are shaped that way, and a
+worked API example, because in a systems codebase the data structures *are* the
+architecture — and **writing for agent readers**, since these docs are re-read by
+future AI sessions that retrieve fragments, follow instructions literally, and need
+stable anchors instead of drift-prone line numbers. **Read it before Phase 1,
+re-read it before Phase 6, and check each doc against it as you draft.** The phases
+below are how you get there; the standard is how you know you arrived.
 
 ## Suggested Methodology
 

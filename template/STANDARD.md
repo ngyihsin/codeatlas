@@ -1,18 +1,20 @@
 # What "Good" Looks Like: The Standard for Large-Codebase Documentation
 
-> Read this **before** Phase 1 and re-read it **before Phase 6**. It defines the
-> target. The other files tell you the *process*; this file tells you what the
+> Read this **before** Phase 1, **re-read it before Phase 6**, and **check each
+> concept or flow against it as you draft** — quality is built in, not inspected at
+> the end. The other files tell you the *process*; this file tells you what the
 > *output* must achieve to be worth keeping.
 >
-> The goal of this whole template is one document set good enough that a new hire,
-> or a fresh AI session, can become productive in a large codebase without
-> re-deriving everything from raw source. This file is the bar for "good enough".
+> Two readers use these docs: **humans** (new hires) and **agents** (future AI
+> sessions). Most rules serve both. Where they diverge, see "Writing for Agent
+> Readers" near the end. The goal is one document set good enough that either
+> reader becomes productive without re-deriving everything from raw source.
 
 ## The Bar, in One Sentence
 
 Professional documentation for a large codebase lets a competent newcomer answer
-**"where does this behavior live, and why is it built this way?"** without reading
-the whole source tree first.
+**"where does this behavior live, what shape is the data, and why is it built this
+way?"** without reading the whole source tree first.
 
 Everything below is detail in service of that sentence.
 
@@ -25,7 +27,7 @@ question no future reader has.
 Documentation answers the *reader's* questions, not the *author's* history. The
 test is not "did I write down what I found?" It is "can someone who was not here
 use this to get unstuck?" Write for the reader who arrives six months from now and
-knows nothing.
+knows nothing about this project.
 
 ## What the Best Codebases Actually Do
 
@@ -33,129 +35,222 @@ These four projects are among the largest and longest-lived open codebases in th
 world. New contributors join them every week and become productive. Study how they
 document, and steal the patterns.
 
-| Project | Scale | Signature documentation artifact | What to steal |
+**Caveat first:** these projects are exemplary in *specific named artifacts*, not
+uniformly. Some of their docs are stale or abandoned. Revere the artifact below,
+not the whole doc set.
+
+| Project | Exemplary artifact | The transferable lesson |
+|---|---|---|
+| **Linux kernel** | `Documentation/` split into `admin-guide/`, `core-api/`, `process/`; the `MAINTAINERS` file | **Layer docs by reader, and assign an owner to every area.** A doc that mixes "how to use" with "how to hack on it" serves neither reader. A doc with no owner rots. |
+| **Chromium** | "Life of a Pixel" / "Life of a Navigation" | **Choose one canonical path and omit aggressively.** Its power is not completeness — it picks *one* route through staggering complexity and ruthlessly drops the rest. Trace one user-visible action end-to-end; do not trace everything. |
+| **Firefox / Gecko** | **Searchfox**, a fully cross-referenced code index | **Documentation without code links is half a document.** Every claim points at the symbol that embodies it. Searchfox works because text and code are joined. |
+| **Servo** | Architecture docs for the **constellation**, parallel layout, WebRender | **Spend your words only on the non-obvious.** A newcomer can learn ordinary code alone. They cannot guess the few load-bearing abstractions, the key data structures, and the one surprising design choice the whole system rests on. Those are what to document. |
+
+> Note on `memory-barriers.txt`: it is famous partly as a *cautionary* artifact —
+> dense and hard. Do not treat it as the model. The Linux lesson to copy is the
+> *layering*, not the density.
+
+## Documents Come in Types — Know Which You Are Writing
+
+A senior reviewer's first question is "what kind of document is this?" Mixing types
+serves no one. The bar differs per type.
+
+| Type | Job | Examples in this set | Its specific bar |
 |---|---|---|---|
-| **Linux kernel** | ~30M+ lines, C | `Documentation/` tree (reStructuredText → Sphinx, published at docs.kernel.org); the `MAINTAINERS` file; deep single-topic docs like `memory-barriers.txt` | Layer docs by reader. Map every subsystem to an owner. Give the *hardest* concept its own long, careful document. |
-| **Chromium** | ~30M+ lines, C++ | "Life of a Pixel" and "Life of a Navigation"; per-feature design docs; "Getting Around the Chromium Source Code"; `DEPS` layering rules | Trace one user-visible action end-to-end across processes. Write a design doc *per feature*, capturing the *why* and the rejected alternatives. Make module boundaries explicit and enforced. |
-| **Firefox / Gecko** | ~20M+ lines, C++/Rust/JS | firefox-source-docs.mozilla.org (Sphinx); **Searchfox**, a fully cross-referenced code index | Pair prose with a way to jump straight to the code. Cross-reference relentlessly: every concept points at the symbols that embody it. |
-| **Servo** | Large, Rust | Architecture docs describing the **constellation** (manages pipelines/browsing contexts), parallel layout, and the WebRender GPU renderer | Name and explain the few load-bearing abstractions a newcomer *must* know. Explain the unusual design choice (here, parallelism) explicitly, because the reader will not guess it. |
+| **Explanation** | Build understanding; give the *why* | `CONCEPTS.md`, `FLOWS.md` | Captures the *why*; covers the unhappy path |
+| **Reference** | Be exhaustive and skimmable; answer "where / what" | `OVERVIEW.md` map, CLAUDE.md "where to look" | Accurate, scannable, complete for its scope |
+| **How-to (procedural)** | Get a named task done with copy-pasteable steps | **Common Tasks doc (see Trait 9)** | Steps work as written; no detours into *why* |
 
-### The four lessons, distilled
+The "capture the *why* and a rejected alternative" rule below applies to
+**explanation** docs. It does **not** apply to reference or how-to docs. A "how do
+I run one test" doc that pauses to explain rejected alternatives is a *bad* doc.
 
-1. **Linux → layer by reader, and assign ownership.** A doc with no owner rots.
-   A doc that mixes "how to use" with "how to hack on it" serves neither reader.
-2. **Chromium → the flow document is the highest-value artifact.** "Life of a
-   Pixel" teaches more about Chromium than any module list. Our `FLOWS.md` exists
-   to produce exactly this. Also: capture the *why*, including paths not taken.
-3. **Gecko → documentation without code links is half a document.** Every claim
-   must point at a `path:line`. Searchfox works because text and code are joined.
-   Our verification tags and citation rule encode the same idea.
-4. **Servo → name the load-bearing concepts, and explain the surprise.** A
-   newcomer can learn a million lines of ordinary code on their own. They cannot
-   guess the three abstractions and the one counterintuitive decision that the
-   whole design rests on. Those are what `CONCEPTS.md` must capture.
+## The Nine Traits of Professional Large-Codebase Documentation
 
-## The Eight Traits of Professional Large-Codebase Documentation
-
-A document set hits the bar when it has all eight. Each maps to a file in this
-template, so "write good docs" becomes "fill these files to this standard".
+A document set hits the bar when it has all nine. Each maps to a file in this
+template, so "write good docs" becomes "fill these files to this standard."
 
 | # | Trait | What it means | Delivered by |
 |---|---|---|---|
-| 1 | **A routing entry point** | One "start here" file that sends each reader to the right place. No reader has to guess. | `AGENT-warm-up.md`, `README.md` |
+| 1 | **A routing entry point** | One "start here" file that sends each reader to the right place. | `AGENT-warm-up.md`, `README.md` |
 | 2 | **Positioning + a real map** | What the project is in one sentence, and where things live — measured, not guessed. | `OVERVIEW.md` |
-| 3 | **The *why*, not just the what** | Invariants, module boundaries, and at least one rejected alternative per major decision. The reader learns *why* the lines are drawn where they are. | `CONCEPTS.md`, `OVERVIEW.md` notes |
-| 4 | **At least one end-to-end flow** | One concrete user-visible action traced across every module and process it touches. The "Life of a Pixel" pattern. | `FLOWS.md` |
-| 5 | **The hard concepts, deep** | The 3–7 abstractions a newcomer cannot guess, each explained from analogy down to code. Concurrency, IPC, and memory models get their own treatment. | `CONCEPTS.md` |
+| 3 | **The *why*, where recoverable** | Invariants, module boundaries, and — *if recoverable from history, comments, or design docs* — the rejected alternative. If not recoverable, say so and mark it `?`. Never fabricate a rationale. | `CONCEPTS.md` |
+| 4 | **At least one end-to-end flow** | One concrete user-visible action traced across every module and process it touches, including its primary error branch. | `FLOWS.md` |
+| 5 | **The hard concepts and key data structures, deep** | The 3–7 abstractions and the load-bearing data structures a newcomer cannot guess, each explained from contract down to code, with a worked API example. See "Documenting a Major Subsystem." | `CONCEPTS.md` |
 | 6 | **A task → location map** | "I need to change X — where do I look?" answered as a table. Plus ownership and dependency rules. | `CLAUDE.md`, `OVERVIEW.md` |
-| 7 | **Provenance and drift control** | Every claim is anchored to a commit hash and re-verified on a schedule. The reader can trust it or check it. | Verification tags, Phase 7 |
+| 7 | **Provenance and drift control** | Every claim is anchored to a commit hash and re-verified on a schedule. | Verification tags, Phase 7 |
 | 8 | **Honest about its own gaps** | Verified knowledge is separated from guesses. What is *not* understood is written down, not hidden. | `✓ / ◐ / ?` tags, `OPEN-QUESTIONS.md` |
+| 9 | **A common-tasks how-to** | The 3–5 things a new hire does in week one — build, run, test, land a one-line change — as copy-pasteable steps with expected output. | `OVERVIEW.md` or a `HOW-TO.md` |
 
-If a trait is missing, the document set is incomplete — no matter how many pages
-it has. Length is not the measure. Coverage of these eight is.
+If a trait is missing, the document set is incomplete — no matter how many pages it
+has. Length is not the measure. Coverage of these nine is.
+
+## Every Document Starts the Same Way
+
+A reader (human or agent) who lands mid-document must know instantly whether it
+applies to them and whether to trust it. Every generated doc opens with this header:
+
+```
+**Doc type:** explanation | reference | how-to
+**Audience:** who this is for
+**You are assumed to know:** the prerequisite knowledge
+**Before you begin:** what must be working first (checkout, build), or "none"
+**Owner:** who keeps this true and acts on drift
+**Last verified against commit:** <short hash>   **Status:** ✓ / ◐ / ?
+```
+
+Provenance without ownership still rots. Name an owner, even if it is "the
+onboarding team."
 
 ## Maturity Levels: Grade Your Own Output
 
-For each document, decide which level it is at. Aim for **L3** before calling a
-document done. **L2** is the minimum to be useful to anyone but the author.
+For each document, decide which level it is at. Aim for **L3**. **L2** is the
+minimum to be useful to anyone but the author.
 
 | Level | Name | Description |
 |---|---|---|
 | **L0** | Stub | Headers exist, content is placeholder. Useless to a reader. |
 | **L1** | Transcript | Records what the author did, in author order. Useful only to the author. |
 | **L2** | Useful | Answers a reader's question correctly, with citations and verification tags. A newcomer gets unstuck, but must still connect dots themselves. |
-| **L3** | Professional | Reader-ordered, links concept ↔ flow ↔ code, captures the *why* and at least one rejected alternative, anchored to a commit, gaps named honestly. A newcomer becomes productive from it alone. |
+| **L3** | Professional | Reader-ordered; declares audience and type; links concept ↔ data structure ↔ flow ↔ code; gives the *why* where recoverable; anchored and owned; gaps named honestly. A newcomer becomes productive from it alone. |
 
 ### What L3 looks like, per key document
 
 - **OVERVIEW.md (L3):** A newcomer reads it and can correctly predict which
   directory a given feature lives in, and name the project's two or three
   load-bearing subsystems — before opening any source file.
-- **CONCEPTS.md (L3):** Each entry starts with an analogy, descends to a
-  `path:line` walkthrough, links to the flow that exercises it, and states what
-  the reader would misunderstand without it. A concept entry that cannot say
-  "here is what breaks in your mental model without this" is not yet L3.
+- **CONCEPTS.md (L3):** Each entry leads with a concrete example, states the
+  contract, documents the **key data structure** (fields, invariants, lifetime),
+  explains **why it is shaped that way**, shows a **worked API call**, links to the
+  flow that exercises it, and says what the reader would misunderstand without it.
+  An entry for a central subsystem that lacks the data structure or a usage example
+  caps at **L2**, never L3.
 - **FLOWS.md (L3):** A reader can follow the traced action across every process
-  boundary, knows which step uses IPC versus a direct call, and could set a
-  breakpoint at any step from the citation alone. This is the "Life of a Pixel"
-  bar.
-- **CLAUDE.md (L3):** Under 200 lines, every line earns its place in *every*
-  future session, and the task→location table answers the most common "where do I
-  look" questions without a search.
+  boundary, knows which step uses IPC versus a direct call, sees the primary error
+  branch, and could set a breakpoint at any step from the citation alone. This is
+  the "Life of a Pixel" bar.
+- **How-to (L3):** A new hire pastes the steps and they work, first try, on a clean
+  checkout. Expected output is shown so they know it worked.
+- **CLAUDE.md (L3):** Under 200 lines, every line earns its place in *every* future
+  session, and the task→location table answers the most common "where do I look"
+  questions without a search.
+
+## Documenting a Major Subsystem: Data Structures and APIs
+
+For a systems codebase, the **key data structures are the architecture.** You
+cannot understand Linux without `task_struct`, Chromium without `WebContents`, or
+Gecko without the frame tree. An explanation doc for a central subsystem must
+include three parts:
+
+1. **The key data structure(s).** A table of the fields that carry the design, with
+   their invariants, ownership, lifetime, and concurrency rules. Not prose — a
+   table a reader can scan.
+2. **Why this shape.** Tie each structural choice to the constraint that forced it
+   (memory, concurrency, performance, compatibility). Include the rejected
+   alternative **only if recoverable**; otherwise mark it `?`.
+3. **A worked API usage example.** Real calling code, with the non-obvious calls
+   explained *by* the rationale above. The reader should see the design pay off in
+   how the API must be called.
+
+See `EXAMPLES.md` → "Documenting a Key Data Structure" for a full worked entry.
+
+## Writing for Agent Readers
+
+A future AI session reads these docs to act, not just to learn. An agent retrieves
+*fragments*, follows instructions literally, has no memory of this project, and will
+confidently fill gaps from its training prior. Design for that:
+
+1. **Self-contained chunks.** Every concept or flow entry must be usable in
+   isolation. Restate its key identifier, define its terms, and never rely on "as
+   mentioned above." An agent may retrieve only this one section.
+2. **Stable anchors over line numbers.** Cite `file + symbol + search-string`, not
+   just `:LINE`. Line numbers drift, and an agent acts on a stale one literally —
+   editing the wrong code. Treat `:LINE` as a convenience to re-verify, never the
+   source of truth.
+3. **Machine-readable metadata.** The header block above lets an agent filter and
+   route without parsing prose. Keep its fields consistent across all docs.
+4. **Loud deviation callouts.** State where this project breaks from the common
+   pattern the agent's prior expects ("this is an *intrusive* list, not a
+   container-of-pointers list"). The agent guesses the common case otherwise.
+5. **Guardrails as imperatives.** "NEVER edit `generated/`." "Walk this list ONLY
+   under the lock." Agents follow explicit DO/DON'T well; rely on it.
+6. **Error signatures.** Include the literal failure string and its meaning so an
+   agent that hits it can self-correct. Agents string-match; humans infer.
+7. **One canonical term per concept.** Do not call it "renderer" here and "content
+   process" there. Agents match strings; inconsistent vocabulary breaks cross-links.
+
+**The tension to manage:** single-source-of-truth (good for humans and maintenance)
+versus self-contained chunks (good for agents). Resolve it by keeping the
+*authoritative* statement in one place, but giving every retrievable chunk enough
+local context — its key term, its anchor, its status tag — to be used safely alone.
+Controlled redundancy of agent-critical facts is a deliberate exception to DRY.
 
 ## Definition of Done for the Whole Notes Directory
 
-The directory is "professional" — not "finished", this is never finished — when
-all of the following hold. This is the gate before a new hire's work is trusted by
-the next reader.
+The directory is "professional" — not "finished," this is never finished — when all
+of the following hold. The first group checks that the artifacts exist; the second
+checks that they actually *work* on a reader. Both matter; outcomes matter more.
 
-- [ ] **OVERVIEW.md** is L3: one-sentence positioning, measured structural map,
-      entry points, and the *why* behind the top-level split.
-- [ ] **At least one FLOWS.md flow** is L3: a real user-visible action, traced
-      end-to-end, with a rendered diagram and a citable call-chain table.
+**Artifacts present:**
+
+- [ ] Every doc opens with the standard header (type, audience, prerequisites,
+      owner, verified commit).
+- [ ] **OVERVIEW.md** is L3: positioning, measured map, entry points, and the *why*
+      behind the top-level split.
+- [ ] **At least one FLOWS.md flow** is L3: a real action, traced end-to-end, with a
+      rendered diagram, a citable call-chain table, and its primary error branch.
 - [ ] **At least three CONCEPTS.md entries** are L3, including the single hardest
-      concept in the codebase (usually concurrency, IPC, or the memory model).
-- [ ] **CLAUDE.md** is ≤200 lines and every concept/flow it names actually exists
-      in the detailed docs (no dangling pointers).
-- [ ] **Every code claim** in CONCEPTS.md and FLOWS.md has a `path:line` citation
-      and a `✓ / ◐ / ?` tag.
-- [ ] **Every concept and flow entry** records `Last verified against commit:`.
-- [ ] **OPEN-QUESTIONS.md** is non-empty and honest. A large codebase you claim to
-      fully understand after a few sessions is a warning sign, not a triumph.
-- [ ] **The continuity test passes:** a fresh reader, given only the entry point
-      and the files it links, reaches the author's level without re-exploring from
-      scratch. (See `HANDOFF.md` for the exact phrasing.)
+      concept and at least one **key data structure with a worked API example**.
+- [ ] **A common-tasks how-to** exists and works on a clean checkout.
+- [ ] **CLAUDE.md** is ≤200 lines and names no concept/flow that does not exist in
+      the detailed docs.
+- [ ] **Every code claim** has a stable anchor (`file + symbol`) and a `✓ / ◐ / ?`
+      tag.
+- [ ] **OPEN-QUESTIONS.md** is non-empty and honest.
+
+**Outcomes verified (the real test):**
+
+- [ ] **Continuity:** a fresh reader, given only the entry point and the files it
+      links, reaches the author's level without re-exploring. (Necessary, not
+      sufficient — it proves *transfer*, not *value*.)
+- [ ] **Cold-start quiz:** a newcomer can answer 5 pre-agreed questions about the
+      codebase using only the docs (e.g., "which directory owns navigation?",
+      "what protects the task list during a walk?").
+- [ ] **Time-to-first-change:** a new hire can build, run, and land a one-line
+      change using only the how-to, without asking a human.
 
 ## Amateur Tells: How to Spot Documentation That Will Not Help Anyone
 
 If your draft does any of these, it is below the bar. Fix it before committing.
 
-- **Narrates the author's journey.** "First I looked at X, then I found Y." The
-  reader does not care what order you read files in. Re-order around *their*
-  questions.
-- **Lists files without saying why they matter.** A directory listing is not a
-  map. A map says which directories are load-bearing and which are noise.
-- **States what without why.** "The scheduler uses a red-black tree." Good — but
-  *why* a red-black tree, and what breaks if you change it? The why is the part the
-  reader could not have derived alone.
-- **No code citations.** A claim about behavior with no `path:line` is a rumor.
-  Searchfox and kernel-doc exist precisely to kill rumors.
-- **No rejected alternatives.** Every real design chose A over B. A doc that never
-  mentions B has not captured the actual decision, only its outcome.
-- **Confident everywhere, uncertain nowhere.** Real understanding of a large
-  codebase has edges. A doc with no `?` tags and an empty OPEN-QUESTIONS.md is
-  hiding its gaps, not lacking them.
-- **No provenance.** "This is how it works" — as of which commit? Code moves.
-  Undated, unanchored claims are the first to become wrong while still sounding
-  authoritative.
+- **Narrates the author's journey.** "First I looked at X, then Y." Re-order around
+  the *reader's* questions, not your reading order.
+- **Documents the verbs but not the nouns.** Traces flows but never explains the
+  load-bearing data structures the flows move through.
+- **Lists files without saying why they matter.** A directory listing is not a map.
+- **States what without why** (in an explanation doc). "Uses a red-black tree" —
+  but *why*, and what breaks if you change it?
+- **Fabricates a rationale or a rejected alternative.** If the *why* is not
+  recoverable from the code or its history, say so. An invented reason is worse than
+  an honest gap.
+- **No code anchors.** A claim about behavior with no `file + symbol` is a rumor.
+- **Confident everywhere, uncertain nowhere.** No `?` tags and an empty
+  OPEN-QUESTIONS.md means gaps are hidden, not absent.
+- **No provenance.** "This is how it works" — as of which commit?
+- **A linear narrative that only works read in order.** It breaks the moment an
+  agent retrieves one section. Make chunks self-contained.
+- **Re-derives what upstream already documents well.** Link to "Life of a Pixel";
+  do not regenerate it.
+- **Too long.** Burying the answer or re-explaining derivable code is below the bar
+  too — not only stubs. This is the most common failure of an AI author.
 
 ## How to Use This File
 
 1. **Before Phase 1:** read it once so you know the target.
-2. **During Phases 3–5:** when you draft a concept or flow, check it against the
-   relevant L3 description above.
-3. **Before Phase 6 and before any commit you call "done":** walk the *Definition
-   of Done* checklist and the *Amateur Tells* list. Fix what fails.
+2. **While drafting (Phases 3–5):** check each concept or flow against the relevant
+   L3 description *as you write it*. Build quality in.
+3. **Before Phase 6 and before any commit you call "done":** walk the *Definition of
+   Done* checklist and the *Amateur Tells* list. Fix what fails.
 4. **In review:** the human (ideally a non-native English reader, per
    `WRITING-STYLE.md`) grades each document L0–L3 and records it in
    `ONBOARD-CHECKLIST.md`.

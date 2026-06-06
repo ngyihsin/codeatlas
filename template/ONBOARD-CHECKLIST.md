@@ -65,11 +65,20 @@ For a worked example (Chromium subsystem tracking), see `EXAMPLES.md` → "Chrom
 
 The notes directory is "professional" — never "finished" — when these all hold. This mirrors `STANDARD.md` → "Definition of Done for the Whole Notes Directory". Walk it before declaring Phase 6 done or handing the docs to a new reader.
 
+**Artifacts present:**
+
+- [ ] Every doc opens with the standard header (type, audience, prerequisites, owner, verified commit)
 - [ ] OVERVIEW.md is L3 (positioning + measured map + entry points + the *why* of the top-level split)
-- [ ] At least one FLOWS.md flow is L3 (real action, traced end-to-end, rendered diagram, citable call-chain table)
-- [ ] At least three CONCEPTS.md entries are L3, including the single hardest concept (concurrency, IPC, or memory model)
+- [ ] At least one FLOWS.md flow is L3 (real action, end-to-end, rendered diagram, citable call-chain table, primary error branch)
+- [ ] At least three CONCEPTS.md entries are L3, including the single hardest concept and at least one **key data structure with a worked API example**
+- [ ] A common-tasks how-to exists and works on a clean checkout
 - [ ] CLAUDE.md is ≤200 lines and names no concept/flow that does not exist in the detailed docs
-- [ ] Every code claim in CONCEPTS.md and FLOWS.md has a `path:line` citation and a `✓ / ◐ / ?` tag
+- [ ] Every code claim has a stable anchor (`file + symbol`) and a `✓ / ◐ / ?` tag
 - [ ] Every concept and flow entry records `Last verified against commit:`
 - [ ] OPEN-QUESTIONS.md is non-empty and honest
-- [ ] The continuity test passes (see `HANDOFF.md`)
+
+**Outcomes verified (the real test):**
+
+- [ ] Continuity test passes (see `HANDOFF.md`) — proves transfer, not value
+- [ ] Cold-start quiz: a newcomer answers 5 pre-agreed questions using only the docs
+- [ ] Time-to-first-change: a new hire builds, runs, and lands a one-line change using only the how-to
