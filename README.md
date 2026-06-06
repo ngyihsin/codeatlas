@@ -38,6 +38,7 @@ Both share the same architecture: a single warm-up entry point, phased progressi
 ```
 template/
   AGENT-warm-up.md            # Agent reads this at the start of every session
+  STANDARD.md                 # What "good" looks like: the quality bar + exemplars (Linux, Chromium, Gecko, Servo)
   ONBOARD-GUIDE.md            # Step-by-step exploration phases (kept, not deleted)
   ONBOARD-CHECKLIST.md        # Tracks which phases / topics have been completed
   OVERVIEW.md                 # What the project is, top-level structure (Phase 1-2)
@@ -108,6 +109,7 @@ If yes, your docs are honest. If no, something didn't get distilled.
 
 | Document | Role | When Filled |
 |---|---|---|
+| **STANDARD.md** | The quality bar: what "good" looks like, exemplars, maturity rubric | Read-only reference (not filled) |
 | **OVERVIEW.md** | What the project is, top-level structure | Phase 1-2 |
 | **CONCEPTS.md** | Core abstractions and embodying files | Phase 3-4, ongoing |
 | **FLOWS.md** | Concrete call chains | Phase 5, ongoing |
@@ -117,6 +119,33 @@ If yes, your docs are honest. If no, something didn't get distilled.
 | **ONBOARD-CHECKLIST.md** | Phase / topic completion tracking | Continuously |
 | **AGENT-warm-up.md** | Session entry point | Once at setup |
 | **ONBOARD-GUIDE.md** | Detailed phase instructions | Reference only |
+
+## What Professional Large-Codebase Documentation Is
+
+Before generating anything, know the target. The goal is not "notes" — it is
+documentation good enough that a new hire becomes productive without re-reading
+the whole source tree. `template/STANDARD.md` defines this bar in full, drawing on
+how the largest open codebases actually document themselves:
+
+- **Linux kernel** — a `Documentation/` tree layered by reader, a `MAINTAINERS`
+  file mapping every subsystem to an owner, and deep single-topic docs for the
+  hardest concepts. *Lesson: layer by reader, assign ownership, go deep on the
+  hard thing.*
+- **Chromium** — "Life of a Pixel" and "Life of a Navigation" trace one
+  user-visible action across the whole multi-process stack; per-feature design
+  docs capture the *why* and the rejected alternatives. *Lesson: the end-to-end
+  flow document is the highest-value artifact.*
+- **Firefox / Gecko** — Sphinx docs paired with **Searchfox**, a fully
+  cross-referenced code index. *Lesson: documentation without code links is half a
+  document.*
+- **Servo** — architecture docs that name the few load-bearing abstractions (the
+  constellation, parallel layout, WebRender) a newcomer cannot guess. *Lesson:
+  name the load-bearing concepts and explain the surprising design choice.*
+
+`STANDARD.md` turns these into eight required traits, a maturity rubric (L0 stub →
+L3 professional) for grading each document, and a definition of done for the whole
+notes directory. **Read it before Phase 1 and re-read it before Phase 6.** The
+phases below are how you get there; the standard is how you know you arrived.
 
 ## Suggested Methodology
 

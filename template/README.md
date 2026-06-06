@@ -24,6 +24,7 @@ That's it. Everything else is described inside `AGENT-warm-up.md`.
 | Document | Role |
 |---|---|
 | `AGENT-warm-up.md` | Single bootstrap file, read every session |
+| `STANDARD.md` | What "good" looks like: the quality bar, exemplars, and maturity rubric |
 | `ONBOARD-GUIDE.md` | Phase definitions and workflow |
 | `ONBOARD-CHECKLIST.md` | Phase / topic completion tracking |
 | `OVERVIEW.md` | What the project is, top-level structure |

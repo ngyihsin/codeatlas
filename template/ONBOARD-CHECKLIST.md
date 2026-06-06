@@ -22,23 +22,25 @@ Status legend: ☐ Not started, 🟡 In progress, ✅ Complete, 🔁 Needs re-ru
 
 `Tech writer reviewed` is set after a human (ideally one for whom English is not the first language) has read the entry. The agent's first pass does not count. See `WRITING-STYLE.md`.
 
-| # | Concept | Status | Tag | Last Reviewed | Tech writer reviewed |
-|---|---|---|---|---|---|
-| 1 | (filled in Phase 3) | ☐ | — | — | ☐ |
-| 2 | | ☐ | — | — | ☐ |
-| 3 | | ☐ | — | — | ☐ |
-| 4 | | ☐ | — | — | ☐ |
-| 5 | | ☐ | — | — | ☐ |
+`Level` is the maturity grade from `STANDARD.md` (L0 stub → L3 professional). Aim for L3; L2 is the minimum to be useful to anyone but the author.
+
+| # | Concept | Status | Tag | Level | Last Reviewed | Tech writer reviewed |
+|---|---|---|---|---|---|---|
+| 1 | (filled in Phase 3) | ☐ | — | L0 | — | ☐ |
+| 2 | | ☐ | — | L0 | — | ☐ |
+| 3 | | ☐ | — | L0 | — | ☐ |
+| 4 | | ☐ | — | L0 | — | ☐ |
+| 5 | | ☐ | — | L0 | — | ☐ |
 
 Add rows as you discover more concepts to learn.
 
 ## Flows Traced (Phase 5)
 
-| # | Flow | Status | Tag | Last Reviewed | Tech writer reviewed |
-|---|---|---|---|---|---|
-| 1 | | ☐ | — | — | ☐ |
-| 2 | | ☐ | — | — | ☐ |
-| 3 | | ☐ | — | — | ☐ |
+| # | Flow | Status | Tag | Level | Last Reviewed | Tech writer reviewed |
+|---|---|---|---|---|---|---|
+| 1 | | ☐ | — | L0 | — | ☐ |
+| 2 | | ☐ | — | L0 | — | ☐ |
+| 3 | | ☐ | — | L0 | — | ☐ |
 
 Add rows as more flows become relevant.
 
@@ -58,3 +60,16 @@ Some codebases are too large to onboard whole. Track which subsystems have been 
 | | | |
 
 For a worked example (Chromium subsystem tracking), see `EXAMPLES.md` → "Chromium Subsystems Tracker".
+
+## Definition of Done Gate
+
+The notes directory is "professional" — never "finished" — when these all hold. This mirrors `STANDARD.md` → "Definition of Done for the Whole Notes Directory". Walk it before declaring Phase 6 done or handing the docs to a new reader.
+
+- [ ] OVERVIEW.md is L3 (positioning + measured map + entry points + the *why* of the top-level split)
+- [ ] At least one FLOWS.md flow is L3 (real action, traced end-to-end, rendered diagram, citable call-chain table)
+- [ ] At least three CONCEPTS.md entries are L3, including the single hardest concept (concurrency, IPC, or memory model)
+- [ ] CLAUDE.md is ≤200 lines and names no concept/flow that does not exist in the detailed docs
+- [ ] Every code claim in CONCEPTS.md and FLOWS.md has a `path:line` citation and a `✓ / ◐ / ?` tag
+- [ ] Every concept and flow entry records `Last verified against commit:`
+- [ ] OPEN-QUESTIONS.md is non-empty and honest
+- [ ] The continuity test passes (see `HANDOFF.md`)

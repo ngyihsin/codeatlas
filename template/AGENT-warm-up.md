@@ -43,11 +43,12 @@ If the state block is missing or malformed, treat it as `pre-bootstrap` and tell
 
 ### Step 2A: First-Time or In-Progress Onboarding
 
-1. Read `ONBOARD-GUIDE.md` in full.
-2. Read `WRITING-STYLE.md` — every doc you write must follow these rules.
-3. Tell the user: "I see this is the first onboarding session. I'll walk through the phases in ONBOARD-GUIDE.md. We start with Phase 1: Ignorance Scan, which is code-free."
-4. Begin Phase 1. **Stop after each phase and wait for the user.**
-5. At session end: set `state: onboarding` in the HANDOFF.md state block. When Phase 1 completes, set `phase1_complete: true`. When Phase 6 produces the first CLAUDE.md, set `state: continuing`.
+1. Read `STANDARD.md` — this defines what "good" output looks like. It is the target every doc you write must hit.
+2. Read `ONBOARD-GUIDE.md` in full — this is the process for reaching that target.
+3. Read `WRITING-STYLE.md` — every doc you write must follow these rules.
+4. Tell the user: "I see this is the first onboarding session. I'll walk through the phases in ONBOARD-GUIDE.md, aiming for the quality bar in STANDARD.md. We start with Phase 1: Ignorance Scan, which is code-free."
+5. Begin Phase 1. **Stop after each phase and wait for the user.**
+6. At session end: set `state: onboarding` in the HANDOFF.md state block. When Phase 1 completes, set `phase1_complete: true`. When Phase 6 produces the first CLAUDE.md, set `state: continuing`.
 
 ### Step 2B: Continuing Session
 
@@ -142,6 +143,8 @@ Phases are designed to be interactive. Do not run multiple phases in a single ag
 A new AI session, given only `AGENT-warm-up.md` and the docs it points to, can reach the same level of operational understanding the user has — within one session, without re-exploring the codebase from scratch.
 
 If a new session would have to start over, the docs failed. Fix them.
+
+The full definition of "good" — what professional documentation for a large codebase looks like, with reference exemplars (Linux kernel, Chromium, Gecko, Servo), a maturity rubric, and a definition of done — lives in `STANDARD.md`. Grade every doc against it before calling it complete.
 
 ---
 

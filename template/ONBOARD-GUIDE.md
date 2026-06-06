@@ -4,6 +4,8 @@ This file describes the phases for systematically understanding the target codeb
 
 The agent reads this file when starting first-time onboarding. After Phase 1 is checked off in `ONBOARD-CHECKLIST.md`, future sessions consult this guide only when re-running a phase.
 
+**This guide is the *process*. `STANDARD.md` is the *target*.** Read `STANDARD.md` first: it defines what professional documentation for a large codebase looks like, using Linux kernel, Chromium, Gecko, and Servo as exemplars, and gives a maturity rubric (L0–L3) to grade your output. Every phase below exists to move one document toward L3.
+
 ## Core Principles
 
 Before diving into phases:
@@ -216,6 +218,10 @@ Replace the placeholder from Phase 3 with:
 - See OPEN-QUESTIONS.md Q5
 ```
 
+### Quality Bar
+
+The entry is done when it matches `STANDARD.md` → "What L3 looks like → CONCEPTS.md": analogy, then a `path:line` walkthrough, a link to the flow that exercises it, and a clear statement of **what the reader would misunderstand without this concept**. An entry that cannot name what breaks in the reader's mental model is not yet L3.
+
 ### Done Criteria
 
 - CONCEPTS.md entry is detailed and tagged
@@ -287,6 +293,10 @@ sequenceDiagram
 - Step 8 onward: ? Speculation, see OPEN-QUESTIONS Q9
 ```
 
+### Quality Bar
+
+This is the "Life of a Pixel" artifact — the single highest-value document for a large codebase (see `STANDARD.md`). The flow is done when a reader could **set a breakpoint at any step from the citation alone**, knows which steps cross a process or thread boundary, and can tell IPC from a direct call. That is the L3 bar for FLOWS.md.
+
 ### Done Criteria
 
 - FLOWS.md has at least one full flow
@@ -333,12 +343,15 @@ sequenceDiagram
 
 3. Read CLAUDE.md aloud to yourself and ask: "Is every line earning its place in every future session's context window?" Cut anything that fails.
 
-4. Update the HANDOFF.md state block: set `state: continuing`.
+4. **Run the gate in `STANDARD.md` → "Definition of Done for the Whole Notes Directory".** This is the moment to check the document set against the bar, not just CLAUDE.md against its line count. Walk the *Amateur Tells* list too. Fix what fails before declaring Phase 6 done.
+
+5. Update the HANDOFF.md state block: set `state: continuing`.
 
 ### Done Criteria
 
 - CLAUDE.md ≤200 lines (verified by `wc -l`)
 - Cross-links to OVERVIEW, CONCEPTS, FLOWS, OPEN-QUESTIONS
+- `STANDARD.md` "Definition of Done" gate walked; failing items fixed or logged
 - ONBOARD-CHECKLIST.md Phase 6 ticked
 - ONBOARD-GUIDE.md NOT deleted (unlike docforge's INIT-GUIDE)
 - HANDOFF.md state block shows `state: continuing`
