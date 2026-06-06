@@ -139,16 +139,6 @@ the load-bearing inputs are always: the **invariants registry** above, the relev
 analysis: a change to `dictFind` reaches *every* command (all keyspace reads go
 through it) — blast radius is the whole command surface; treat with care.
 
-<!-- GENERATED:registry START — do not edit; run framework/tools/generate.sh -->
-### Concept & Flow Registry (generated)
-
-| Kind | Name | Anchor | Status |
-|---|---|---|---|
-| concept | `dict` — the hash table with incremental rehashing | `src/dict.c` / `src/dict.h` → `dict` (search `"struct dict"`) | ◐ |
-| concept | `redisObject` — the boxed value (brief) | `src/server.h → redisObject` (search `"struct redisObject"`) | ◐ |
-| flow | Life of a `GET` | a client sends `GET <key>` over a TCP connection (RESP protocol) | ◐ |
-<!-- GENERATED:registry END -->
-
 ## How This Index Stays True
 
 Derived from `CONCEPTS.md`, `FLOWS.md`, and `HOW-TO.md`; refresh when they change.

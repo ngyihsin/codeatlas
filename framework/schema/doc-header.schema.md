@@ -27,5 +27,5 @@ major version.
 | `Last verified against commit` | yes | provenance for drift checks |
 | `Status` | yes | a tag from `tags.md` |
 
-Generated docs (`CLAUDE.md`, `INDEX.md`) additionally carry a "generated — do not
-edit" banner and an `Index schema` line where applicable.
+`INDEX.md` additionally carries an `Index schema:` line (see `index.schema.md`). All
+instance docs are authored; none carry a "generated" banner.

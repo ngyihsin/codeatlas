@@ -23,14 +23,20 @@ CODEBASE="${CODEBASE:-.}"
 BASE_REF="${1:-origin/main}"
 
 # 1. Files changed in the codebase since BASE_REF.
+if ! git -C "$CODEBASE" rev-parse --verify --quiet "$BASE_REF" >/dev/null; then
+  echo "check-doc-drift: base ref not found: '$BASE_REF' (in $CODEBASE)." >&2
+  echo "  Pass a valid ref, e.g. origin/main; in CI use fetch-depth: 0." >&2
+  exit 2
+fi
 changed="$(git -C "$CODEBASE" diff --name-only "${BASE_REF}...HEAD" | sort -u)"
 
 # 2. Code paths cited anywhere in the notes. Anchors look like `path/to/file → Sym`
 #    or `path/to/file.ext:10-20`; keep the path part, drop the symbol / line suffix.
-cited="$(grep -rhoE '`[^`]+`' "$NOTES_DIR" --include='*.md' 2>/dev/null \
+#    `|| true` so "no citations found" (grep exit 1) is not treated as a fatal error.
+cited="$( { grep -rhoE '`[^`]+`' "$NOTES_DIR" --include='*.md' 2>/dev/null \
   | sed -E 's/`//g; s/ *(→|:| \(search).*$//' \
   | grep -E '^[A-Za-z0-9._/-]+/[A-Za-z0-9._-]+\.[A-Za-z0-9]+$' \
-  | sort -u)"
+  | sort -u; } || true)"
 
 # 3. Intersection = cited files that changed.
 drift="$(comm -12 <(printf '%s\n' "$changed") <(printf '%s\n' "$cited") || true)"

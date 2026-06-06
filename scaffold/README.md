@@ -27,8 +27,8 @@ It routes to the right knowledge and defines what is safe to act on.
 
 These are the files **you own** in this instance. The methodology they follow lives
 in the read-only framework cache `.docforge/framework/` (pinned to `template_version`
-in `HANDOFF.md`). You edit the *authored* files; the *generated* registry in
-`INDEX.md` is rebuilt by `tools/generate.sh`; you never hand-edit the cache. Full role
+in `HANDOFF.md`). You edit the *authored* files; `tools/check-index.sh` verifies
+`INDEX.md` covers every concept and flow; you never hand-edit the cache. Full role
 taxonomy: `.docforge/framework/MANIFEST.md`.
 
 **Instance files (you own):**
@@ -36,7 +36,7 @@ taxonomy: `.docforge/framework/MANIFEST.md`.
 | Document | Role |
 |---|---|
 | `AGENT-warm-up.md` | Bootstrap for the **authoring** agent, read every session (state) |
-| `INDEX.md` | Entry point for **consuming** skills (authored map + generated registry) |
+| `INDEX.md` | Entry point for **consuming** skills (authored map; coverage checked by `check-index.sh`) |
 | `OVERVIEW.md` | What the project is, top-level structure (authored) |
 | `CONCEPTS.md` | Core abstractions, deep-dived (authored) |
 | `FLOWS.md` | Concrete call chains for user-visible behaviors (authored) |

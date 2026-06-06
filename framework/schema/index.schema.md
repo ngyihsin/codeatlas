@@ -37,8 +37,10 @@ A conforming `INDEX.md` contains these sections, in this order:
 - **Links** — every Concepts/Flows row resolves to a section that exists in
   `CONCEPTS.md` / `FLOWS.md`. A dangling row is a contract violation.
 
-## Generation
+## Authoring and coverage
 
-The Knowledge Map tables are **generated** by `tools/generate.sh` from the headers in
-`CONCEPTS.md` and `FLOWS.md`, between `<!-- GENERATED:* -->` markers. Hand-authored
-sections (protocol, contract, recipes) live outside those markers and are preserved.
+The whole of `INDEX.md` — including the Knowledge Map tables — is **authored** and is
+the single source of truth; no tool rewrites it. `tools/check-index.sh` *verifies*
+coverage: it reads the `## Concept:` and `## Flow:` headings in `CONCEPTS.md` /
+`FLOWS.md` and fails if any is missing from the Knowledge Map. A missing concept/flow
+or a dangling row is a contract violation; fix it by editing `INDEX.md`.

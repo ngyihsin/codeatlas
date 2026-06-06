@@ -67,8 +67,10 @@ describe it in general terms.
 
 ## Respect the File Roles
 
-Edit **authored** files by hand; rebuild **generated** files (`CLAUDE.md`, `INDEX.md`)
-with `tools/generate.sh`; never hand-edit the framework cache. See `MANIFEST.md`.
+Edit the **authored** files by hand — including `CLAUDE.md` (a curated lean index) and
+`INDEX.md` (its Knowledge Map is the single source of truth). Run
+`tools/check-index.sh` to confirm `INDEX.md` still covers every concept and flow.
+Never hand-edit the framework cache. See `MANIFEST.md`.
 
 ## Update Docs at Session End
 
@@ -78,8 +80,11 @@ Before ending a session, update:
 2. `ONBOARD-CHECKLIST.md` — tick off what was completed
 3. `OPEN-QUESTIONS.md` — add new mysteries, resolve solved ones
 4. `logs/YYYY-MM-DD-session-NN-<slug>.md` — full session log
-5. Re-run `tools/generate.sh` if concepts or flows changed (rebuilds `CLAUDE.md` /
-   `INDEX.md`)
+5. `INDEX.md` — add a Knowledge Map row for any new concept or flow, then run
+   `tools/check-index.sh` to confirm coverage
+6. `CLAUDE.md` — only if a genuinely fundamental insight was reached. If you are
+   tempted to edit `CLAUDE.md` every session, you are adding too much; it changes
+   rarely and must stay under 200 lines.
 
 ## Stop and Wait
 

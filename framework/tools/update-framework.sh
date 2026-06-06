@@ -15,7 +15,6 @@ set -euo pipefail
 
 INSTANCE="${1:?usage: update-framework.sh <instance-dir> [framework-src-dir]}"
 FRAMEWORK_SRC="${2:-$(cd "$(dirname "$0")/.." && pwd)}"
-REPO_ROOT="$(cd "$FRAMEWORK_SRC/.." && pwd)"
 DEST="$INSTANCE/.docforge/framework"
 
 [ -f "$FRAMEWORK_SRC/STANDARD.md" ] || { echo "update: $FRAMEWORK_SRC does not look like a framework/ dir"; exit 1; }
@@ -27,11 +26,13 @@ else
   rm -rf "$DEST"; mkdir -p "$DEST"; cp -R "$FRAMEWORK_SRC"/. "$DEST"/
 fi
 
-ver="$(cat "$REPO_ROOT/VERSION" 2>/dev/null || echo unknown)"
+# VERSION lives inside framework/, so it travels with the cache and a self-refresh
+# (source == an existing cache) still resolves the real version.
+ver="$(cat "$FRAMEWORK_SRC/VERSION" 2>/dev/null || echo unknown)"
 printf '%s\n' "$ver" > "$INSTANCE/.docforge/FRAMEWORK_VERSION"
 
 echo "Updated framework cache: $DEST (version $ver)."
 echo "Next:"
-echo "  1. Set 'template_version: $ver' in $INSTANCE/HANDOFF.md"
+echo "  1. Set 'template_version: $ver' in the $INSTANCE/HANDOFF.md state block"
 echo "  2. Read CHANGELOG.md migration notes for the versions you crossed"
-echo "  3. Re-run: framework/tools/generate.sh $INSTANCE"
+echo "  3. Run: framework/tools/check-index.sh $INSTANCE"

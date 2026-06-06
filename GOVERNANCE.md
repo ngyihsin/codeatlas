@@ -1,6 +1,6 @@
 # Governance
 
-How this project separates the **framework** from a **generated instance**, and the
+How this project separates the **framework** from an **instance**, and the
 two change-control flows that keep both honest. Read this first if you are confused
 about "what do I edit, and how do updates flow?"
 
@@ -16,8 +16,7 @@ instance.
        │  pinned by version, referenced — never copied-and-edited
        │
   instance     (in a target codebase)   ── the dev/team owns
-       ├─ authored   sources of truth, hand-written, reviewed
-       ├─ generated  projections of the authored sources, rebuilt by tools
+       ├─ authored   sources of truth, hand-written and reviewed
        └─ state      provenance + progress (pins the framework version)
 ```
 
@@ -26,27 +25,29 @@ instance.
 | **Framework** | The methodology: standard, guide, writing style, agent protocol, schemas, tools | `framework/` (upstream) | maintainers | PR + SemVer + CHANGELOG (Flow A) |
 | **Scaffold** | The blank fill-in starting point an instance is created from | `scaffold/` (upstream) | maintainers | same as framework |
 | **Instance** | A *filled* note set for one real codebase | the target codebase | the developer/team | edited locally; updated via Flow B |
-| **Fixtures** | Sample filled instances kept for illustration | `examples/` | maintainers | docs of the template |
 
-`framework/MANIFEST.md` classifies every file's role (framework / authored /
-generated / state). When in doubt, that file is authoritative.
+The `examples/` directory holds **sample instances** kept in this repo for
+illustration; their files take the same instance roles below.
+
+`framework/MANIFEST.md` classifies every file's role (framework / authored / state).
+When in doubt, that file is authoritative.
 
 ## File Roles Inside an Instance
 
-A created instance has three roles, and you treat each differently:
+A created instance has two editable roles plus the read-only cache:
 
 - **Authored (source of truth):** `OVERVIEW.md`, `CONCEPTS.md`, `FLOWS.md`,
-  `HOW-TO.md`, `OPEN-QUESTIONS.md`, and the curated `CLAUDE.md` lean index. You write
-  these. Review them like code.
-- **Generated (do not hand-edit):** the `GENERATED:registry` block inside `INDEX.md` —
-  a projection of `CONCEPTS.md` / `FLOWS.md`, rebuilt by
-  `framework/tools/generate.sh`. The rest of `INDEX.md` (protocol, map, recipes) is
-  authored.
+  `HOW-TO.md`, `OPEN-QUESTIONS.md`, the curated `CLAUDE.md` lean index, and
+  `INDEX.md` (its Knowledge Map is the source of truth). You write these; review them
+  like code. `framework/tools/check-index.sh` *verifies* — never rewrites — that
+  `INDEX.md` still covers every concept and flow.
 - **State:** `HANDOFF.md` (pins `template_version`), `ONBOARD-CHECKLIST.md`,
   `logs/`. Provenance and progress.
 - **Framework cache:** `.docforge/framework/` — a read-only copy of the framework at
   the pinned version, refreshed by `update-framework.sh`. Never hand-edited. (Like
-  `node_modules`: present for offline and agent use, regenerated, not source.)
+  `node_modules`: present for offline and agent use, refreshed not authored.)
+
+Nothing in an instance is machine-generated; no tool overwrites your files.
 
 ## Flow A — Evolving the Framework
 
@@ -55,7 +56,7 @@ For changing the template itself (the `framework/` and `scaffold/` planes).
 1. Propose the change as a PR. See `CONTRIBUTING.md`.
 2. **Meta-rule:** a change to `STANDARD.md` must itself meet the bar it defines. The
    standard governs its own edits.
-3. Version with **SemVer** in `VERSION`:
+3. Version with **SemVer** in `framework/VERSION`:
    - **major** — a change that requires existing instances to do work (e.g., a new
      required section). Must include **instance-migration notes**.
    - **minor** — additive, no instance action required.
@@ -64,15 +65,15 @@ For changing the template itself (the `framework/` and `scaffold/` planes).
 5. Merge after review. Schema changes additionally bump the schema version in
    `framework/schema/`.
 
-## Flow B — Maintaining a Generated Instance
+## Flow B — Maintaining an Instance
 
 For keeping a real codebase's notes correct over time.
 
-1. **Pin:** the instance records the framework version it was generated from in the
+1. **Pin:** the instance records the framework version it was created from in the
    `HANDOFF.md` state block (`template_version`).
-2. **Edit authored docs only.** Never edit generated files or the framework cache.
-3. **Rebuild projections** after editing concepts/flows:
-   `framework/tools/generate.sh <instance-dir>`.
+2. **Edit authored docs only.** Never edit the framework cache.
+3. **Check coverage** after adding a concept or flow:
+   `framework/tools/check-index.sh <instance-dir>` confirms `INDEX.md` still lists it.
 4. **Change control on content** (the gate before another reader or skill trusts it):
    - **Code is truth** — when code and a doc disagree, the code wins.
    - **Every claim is tagged** `✓ / ◐ / ?` and anchored `file → symbol`.
@@ -86,7 +87,7 @@ For keeping a real codebase's notes correct over time.
      to refresh `.docforge/framework/`,
    - read the `CHANGELOG.md` migration notes for the versions you crossed,
    - do the migration work (e.g., re-grade docs against a new required section),
-   - re-run `generate.sh`.
+   - run `framework/tools/check-index.sh <instance-dir>` to confirm coverage.
 
 ## Why Reference, Not Copy
 

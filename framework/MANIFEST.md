@@ -9,9 +9,11 @@ Roles:
 - **framework** — upstream-owned methodology. Read-only in an instance (lives in the
   `.docforge/framework/` cache). Edit only in the upstream repo.
 - **authored** — a source of truth you write and review by hand.
-- **generated** — a projection of authored sources, rebuilt by `generate.sh`. Do not
-  hand-edit.
 - **state** — provenance and progress.
+
+No file in an instance is machine-generated; nothing is overwritten by a tool. The
+authored docs are the source of truth, and `tools/check-index.sh` *verifies* (but
+never rewrites) that `INDEX.md` stays complete.
 
 ## Framework plane (upstream)
 
@@ -32,27 +34,22 @@ When `scaffold/` is used to create an instance, each file takes the role below.
 
 | File | Role | You… |
 |---|---|---|
-| `AGENT-warm-up.md` | state + framework pointer | fill the identity block; pins `template_version` |
+| `AGENT-warm-up.md` | state + framework pointer | fill the identity block |
 | `OVERVIEW.md` | authored | write |
 | `CONCEPTS.md` | authored | write |
 | `FLOWS.md` | authored | write |
 | `HOW-TO.md` | authored | write |
 | `OPEN-QUESTIONS.md` | authored | write |
 | `CLAUDE.md` | authored (curated lean index) | curate by hand; keep ≤200 lines |
-| `INDEX.md` | authored prose + **generated registry** | write the protocol/map/recipes; the registry block between `GENERATED` markers is rebuilt by `generate.sh` — do not hand-edit it |
-| `HANDOFF.md` | state | update each session; holds the version pin |
+| `INDEX.md` | authored (Knowledge Map is the source of truth) | write the protocol/map/recipes; run `check-index.sh` to confirm coverage |
+| `HANDOFF.md` | state | update each session; **holds the `template_version` pin** in its state block |
 | `ONBOARD-CHECKLIST.md` | state | update each session |
 | `logs/` | state | one file per session |
 | `.docforge/framework/` | framework (cache) | never edit — `update-framework.sh` |
 
-## Generated-from map
+## Keeping INDEX.md complete
 
-`generate.sh` builds the generated region from these authored sources:
-
-| Generated region | Built from |
-|---|---|
-| `INDEX.md` → the `GENERATED:registry` block (Concept/Flow registry: name, anchor, status) | `CONCEPTS.md`, `FLOWS.md` (`## Concept:` / `## Flow:` headings + Anchor/Trigger/Status) |
-
-Hand-authored prose in `INDEX.md` lives **outside** the `GENERATED` marker region and
-is preserved across rebuilds. `CLAUDE.md` is curated by hand (judgment required to stay
-lean), not generated.
+`check-index.sh` verifies — it does not generate. It reads the `## Concept:` and
+`## Flow:` headings in `CONCEPTS.md` / `FLOWS.md` and fails if any is missing from the
+`INDEX.md` Knowledge Map. The Knowledge Map and `CLAUDE.md` are both authored by hand;
+nothing overwrites them.

@@ -26,12 +26,14 @@ document allowed to grade itself.
 2. Choose a SemVer bump (see `GOVERNANCE.md` → Flow A):
    - **major** if existing instances must do work → add **migration notes**.
    - **minor** for additive changes; **patch** for fixes/clarifications.
-3. Update `VERSION` and add a `CHANGELOG.md` entry.
+3. Update `framework/VERSION` and add a `CHANGELOG.md` entry.
 4. If you touched `framework/schema/`, bump that schema's version too.
 5. Run the checks before pushing:
    ```
-   framework/tools/generate.sh --check scaffold      # generated files in sync
    bash -n framework/tools/*.sh                       # scripts parse
+   for d in scaffold examples/*-onboarding-notes; do  # INDEX covers all concepts/flows
+     framework/tools/check-index.sh "$d"
+   done
    ```
 6. Keep cross-references as **bare filenames** (location-independent). The physical
    location of each file is recorded once in `framework/MANIFEST.md`; do not hard-code

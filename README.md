@@ -42,7 +42,7 @@ Both share the same architecture: a single warm-up entry point, phased progressi
 
 **This is the same step you repeat every session.** `AGENT-warm-up.md` is the single bootstrap file. To use the finished notes to *do* work (fix a bug, build a feature, write a design doc), a skill instead starts at `INDEX.md`.
 
-> **Two readers, two entry points.** The *authoring* agent enters at `AGENT-warm-up.md`; a *consuming* skill enters at `INDEX.md`. See `GOVERNANCE.md` for how the framework, the generated instance, and their update flows are kept separate.
+> **Two readers, two entry points.** The *authoring* agent enters at `AGENT-warm-up.md`; a *consuming* skill enters at `INDEX.md`. See `GOVERNANCE.md` for how the framework, the instance, and their update flows are kept separate.
 
 ## What's in the Repo
 
@@ -52,25 +52,26 @@ from the **scaffold** (the blank fill-in files an instance starts from). See
 
 ```
 docforge-onboard/                 # the framework repo (this repo)
-  VERSION  CHANGELOG.md           # framework version + history (SemVer + migration notes)
+  CHANGELOG.md                    # framework history (SemVer + migration notes)
   GOVERNANCE.md  CONTRIBUTING.md  # the two change-control flows; how to contribute
 
   framework/                      # versioned, READ-ONLY methodology (the dependency)
+    VERSION                       # framework version (travels with the cache)
     STANDARD.md                   # what "good" looks like + exemplars (Linux, Chromium, Gecko, Servo)
     ONBOARD-GUIDE.md              # the phase-by-phase process
     WRITING-STYLE.md              # writing rules for human + agent readers
     AGENT-PROTOCOL.md             # canonical behavioral rules for the authoring agent
     EXAMPLES.md                   # illustrative fragments
-    MANIFEST.md                   # the file-role taxonomy (framework / authored / generated / state)
+    MANIFEST.md                   # the file-role taxonomy (framework / authored / state)
     schema/                       # versioned contracts: index, doc-header, tags
-    tools/                        # generate.sh, update-framework.sh, check-doc-drift.sh
+    tools/                        # check-index.sh, update-framework.sh, check-doc-drift.sh
 
   scaffold/                       # blank fill-in starting point for an instance
-    AGENT-warm-up.md              # session entry point (pins template_version)
+    AGENT-warm-up.md              # session entry point
     OVERVIEW.md CONCEPTS.md FLOWS.md HOW-TO.md OPEN-QUESTIONS.md   # authored sources
-    CLAUDE.md                     # curated lean per-session index
-    INDEX.md                      # consumer entry point (generated registry + authored map)
-    HANDOFF.md  ONBOARD-CHECKLIST.md   # state (HANDOFF pins the framework version)
+    CLAUDE.md                     # curated lean per-session index (authored)
+    INDEX.md                      # consumer entry point (authored; coverage checked by check-index.sh)
+    HANDOFF.md  ONBOARD-CHECKLIST.md   # state (HANDOFF pins template_version)
     README.md                     # the instance's own readme
     logs/SESSION-LOG-TEMPLATE.md
 
@@ -79,9 +80,9 @@ docforge-onboard/                 # the framework repo (this repo)
 
 A **created instance** (a copy of `scaffold/`) additionally gets a
 `.docforge/framework/` cache — a read-only copy of the framework at the pinned
-version, populated by `update-framework.sh`. You edit the authored files; the
-generated registry in `INDEX.md` is rebuilt by `generate.sh`; you never hand-edit the
-cache. Roles are listed in `framework/MANIFEST.md`.
+version, populated by `update-framework.sh`. You edit the authored files (nothing is
+machine-generated); `check-index.sh` verifies `INDEX.md` stays complete; you never
+hand-edit the cache. Roles are listed in `framework/MANIFEST.md`.
 
 ## Worked Reference Instances
 

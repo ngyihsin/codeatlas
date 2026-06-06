@@ -19,7 +19,8 @@ of `GOVERNANCE.md`.
 | `EXAMPLES.md` | Illustrative fragments (full instances live in `/examples`) |
 | `MANIFEST.md` | The file-role taxonomy for the whole project |
 | `schema/` | Versioned contracts: INDEX, doc header, tag vocabulary |
-| `tools/` | `check-doc-drift.sh`, `generate.sh`, `update-framework.sh` |
+| `tools/` | `check-index.sh`, `update-framework.sh`, `check-doc-drift.sh` |
+| `VERSION` | the framework version (ships inside the plane) |
 
 ## A note on references
 

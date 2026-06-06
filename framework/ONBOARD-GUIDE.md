@@ -352,7 +352,7 @@ This is the "Life of a Pixel" artifact — the single highest-value document for
 
 2. Verify line count: `wc -l CLAUDE.md`. If over 200, cut.
 
-3. **Build or refresh `INDEX.md`** — the entry point for consuming skills. Derive its tables from `CONCEPTS.md`, `FLOWS.md`, and `HOW-TO.md`: the concept/flow/data-structure map, the **task→location map**, the **invariants registry**, and the commands. Confirm every row points at a section that exists. This is what lets another skill fix a bug or write a design doc from the docs. See `STANDARD.md` → "The Docs as a Knowledge Base for Other Skills".
+3. **Author or refresh `INDEX.md`** — the entry point for consuming skills. Write its tables from `CONCEPTS.md`, `FLOWS.md`, and `HOW-TO.md`: the concept/flow/data-structure map, the **task→location map**, the **invariants registry**, and the commands. Confirm every row points at a section that exists, then run `tools/check-index.sh` to verify it covers every concept and flow. This is what lets another skill fix a bug or write a design doc from the docs. See `STANDARD.md` → "The Docs as a Knowledge Base for Other Skills".
 
 4. Read CLAUDE.md aloud to yourself and ask: "Is every line earning its place in every future session's context window?" Cut anything that fails.
 

@@ -14,7 +14,7 @@ Read this file at the start of EVERY session. It is the single bootstrap file.
 
 > Replace the three angle-bracket placeholders above when you first set up this template, then leave them alone. The notes directory is self-referential and needs no edit.
 
-> **File roles:** you write the *authored* docs (`OVERVIEW`, `CONCEPTS`, `FLOWS`, `HOW-TO`, `OPEN-QUESTIONS`); the *generated* docs (`CLAUDE.md`, `INDEX.md`) are rebuilt by `tools/generate.sh`; the framework docs (`STANDARD.md`, `ONBOARD-GUIDE.md`, `WRITING-STYLE.md`, `AGENT-PROTOCOL.md`) are read-only in `.docforge/framework/`. See `MANIFEST.md` and `GOVERNANCE.md`.
+> **File roles:** you write the *authored* docs (`OVERVIEW`, `CONCEPTS`, `FLOWS`, `HOW-TO`, `OPEN-QUESTIONS`, the curated `CLAUDE.md`, and `INDEX.md`); `tools/check-index.sh` verifies `INDEX.md` covers every concept and flow; the framework docs (`STANDARD.md`, `ONBOARD-GUIDE.md`, `WRITING-STYLE.md`, `AGENT-PROTOCOL.md`) are read-only in `.docforge/framework/`. See `MANIFEST.md` and `GOVERNANCE.md`.
 
 > For monorepos with multiple distinct subprojects, create one notes directory per subproject. See `EXAMPLES.md` → "Monorepo with Multiple Codebases".
 
@@ -77,9 +77,9 @@ The canonical rules live in the framework: `AGENT-PROTOCOL.md` (in an instance,
 2. **Tag every claim** ✓ / ◐ / ? (same rule for diagrams) — vocabulary in
    `schema/tags.md`.
 3. **Cite a stable anchor** `file → symbol`, not a bare line number.
-4. **Respect file roles** — write *authored* files; rebuild *generated* files
-   (`CLAUDE.md`, `INDEX.md`) with `tools/generate.sh`; never edit the framework cache.
-   See `MANIFEST.md`.
+4. **Respect file roles** — write the *authored* files (including `CLAUDE.md` and
+   `INDEX.md`); run `tools/check-index.sh` to confirm `INDEX.md` coverage; never edit
+   the framework cache. See `MANIFEST.md`.
 5. **Never capture secrets**, write for a global audience, render diagrams before
    committing, and stop between phases.
 

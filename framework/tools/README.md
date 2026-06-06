@@ -5,22 +5,24 @@ Automation that keeps an instance honest and in sync with the framework. These a
 
 | Tool | Job |
 |---|---|
-| `generate.sh` | Rebuild the generated registry in `INDEX.md` from `CONCEPTS.md` / `FLOWS.md`. `--check` for CI. |
+| `check-index.sh` | Verify `INDEX.md`'s Knowledge Map covers every concept/flow in `CONCEPTS.md` / `FLOWS.md`. Read-only. |
 | `update-framework.sh` | Refresh an instance's `.docforge/framework/` cache to a framework version (touches only the cache). |
 | `check-doc-drift.sh` | Flag which notes cite code paths that changed in the codebase. |
 
-## `generate.sh`
+None of these tools modify your authored docs — they verify and report.
 
-Rebuilds the `GENERATED:registry` block in an instance's `INDEX.md` — a deterministic
-projection of the `## Concept:` and `## Flow:` entries (name, anchor, status). Authored
-sections of `INDEX.md` are never touched.
+## `check-index.sh`
+
+Verifies that every `## Concept:` and `## Flow:` authored in `CONCEPTS.md` /
+`FLOWS.md` appears in the `INDEX.md` Knowledge Map. The Knowledge Map is authored (the
+single source of truth); this linter never rewrites it.
 
 ```
-framework/tools/generate.sh <instance-dir>          # rewrite the block
-framework/tools/generate.sh --check <instance-dir>  # exit 1 if stale (CI gate)
+framework/tools/check-index.sh <instance-dir>          # exit 1 if a concept/flow is missing
+framework/tools/check-index.sh --check <instance-dir>  # same; --check accepted for CI symmetry
 ```
 
-Run it after editing concepts or flows. See `../schema/index.schema.md`.
+Run it after adding a concept or flow. See `../schema/index.schema.md`.
 
 ## `update-framework.sh`
 
