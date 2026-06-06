@@ -65,7 +65,7 @@ docforge-onboard/                 # the framework repo (this repo)
     EXAMPLES.md                   # illustrative fragments
     MANIFEST.md                   # the file-role taxonomy (framework / authored / state)
     schema/                       # versioned contracts: index, doc-header, tags
-    tools/                        # check-index, update-framework, check-doc-drift, build-symbol-index, find-symbol, generate-instance
+    tools/                        # check-index, update-framework, check-doc-drift, build-symbol-index, find-symbol, generate-instance, build-summary-tree
 
   scaffold/                       # blank fill-in starting point for an instance
     AGENT-warm-up.md              # session entry point
