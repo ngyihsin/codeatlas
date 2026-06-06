@@ -68,7 +68,7 @@ docforge-onboard/                 # the framework repo (this repo)
 
   scaffold/                       # blank fill-in starting point for an instance
     AGENT-warm-up.md              # session entry point
-    OVERVIEW.md CONCEPTS.md FLOWS.md HOW-TO.md OPEN-QUESTIONS.md   # authored sources
+    OVERVIEW.md CONCEPTS.md FLOWS.md HOW-TO.md API.md OPEN-QUESTIONS.md   # authored sources
     CLAUDE.md                     # curated lean per-session index (authored)
     INDEX.md                      # consumer entry point (authored; coverage checked by check-index.sh)
     HANDOFF.md  ONBOARD-CHECKLIST.md   # state (HANDOFF pins template_version)
@@ -89,8 +89,9 @@ hand-edit the cache. Roles are listed in `framework/MANIFEST.md`.
 The blank templates show the *structure*; the `examples/` directory shows the *bar* —
 complete, filled note sets for real codebases at the **L3 ("professional")** level.
 Each has an `OVERVIEW`, a data-structure `CONCEPTS` entry (with the *why* and a worked
-API call), a `FLOWS` trace (with its error branch), a `HOW-TO`, a lean `CLAUDE.md`,
-and a consumer `INDEX.md` with an invariants registry and task recipes.
+API call), a `FLOWS` trace (with its error branch), a `HOW-TO`, an `API.md` (provided
+surface, consumed library interfaces, feature→API map), a lean `CLAUDE.md`, and a
+consumer `INDEX.md` with an invariants registry and task recipes.
 
 | Instance | Codebase | Stack | Shows |
 |---|---|---|---|
@@ -191,15 +192,17 @@ how the largest open codebases actually document themselves:
   constellation, parallel layout, WebRender) a newcomer cannot guess. *Lesson:
   name the load-bearing concepts and explain the surprising design choice.*
 
-`STANDARD.md` turns these into nine required traits, a maturity rubric (L0 stub →
+`STANDARD.md` turns these into ten required traits, a maturity rubric (L0 stub →
 L3 professional) for grading each document, and a definition of done measured by
 *outcomes* (can a new hire build, answer cold questions, and land a change from the
-docs alone?). It also covers two things easy to miss: **documenting the key data
+docs alone?). It also covers things easy to miss: **documenting the key data
 structures** of a subsystem — their fields, *why* they are shaped that way, and a
 worked API example, because in a systems codebase the data structures *are* the
-architecture — and **writing for agent readers**, since these docs are re-read by
-future AI sessions that retrieve fragments, follow instructions literally, and need
-stable anchors instead of drift-prone line numbers. It also treats the output as a
+architecture; the **API & interface surface** (`API.md`) — what the codebase exposes,
+what library interfaces it consumes, and which APIs power which features, because the
+public surface is where code-tracing starts; and **writing for agent readers**, since
+these docs are re-read by future AI sessions that retrieve fragments, follow
+instructions literally, and need stable anchors instead of drift-prone line numbers. It also treats the output as a
 **knowledge base other skills act on**: a digital colleague dispatched to fix a bug,
 build a feature, or write a design document reads `INDEX.md` — a machine-readable
 map with an invariants registry and task recipes — to ground its work in the real

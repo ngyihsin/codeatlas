@@ -39,6 +39,7 @@ When `scaffold/` is used to create an instance, each file takes the role below.
 | `CONCEPTS.md` | authored | write |
 | `FLOWS.md` | authored | write |
 | `HOW-TO.md` | authored | write |
+| `API.md` | authored | write (provided + consumed interfaces, feature→API map) |
 | `OPEN-QUESTIONS.md` | authored | write |
 | `CLAUDE.md` | authored (curated lean index) | curate by hand; keep ≤200 lines |
 | `INDEX.md` | authored (Knowledge Map is the source of truth) | write the protocol/map/recipes; run `check-index.sh` to confirm coverage |

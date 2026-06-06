@@ -25,6 +25,8 @@ A conforming `INDEX.md` contains these sections, in this order:
 | Concepts | Concept, Anchor, Status, What breaks without it, Use when |
 | Flows | Flow, Trigger, Error / early-exit branch, Status, Use when |
 | Key Data Structures | Structure, Anchor, Invariants documented in |
+| Provided APIs / Entry Points | API / Symbol, Kind, Anchor, Entry point? |
+| Consumed Interfaces | Library / Module, Interface used, Wrapped at, For |
 | Task → Location | To change…, Look in, Owner |
 | Invariants Registry | Invariant, Enforced / relied on at, Explained in, Status |
 | Commands | Need, Command, Verified |

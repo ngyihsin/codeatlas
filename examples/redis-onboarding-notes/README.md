@@ -24,6 +24,7 @@ not just the blank templates.
 | `CONCEPTS.md` | The `dict` and incremental rehashing | L3 **data-structure** entry: fields, *why*, API usage |
 | `FLOWS.md` | "Life of a `GET`" | L3 **flow**: end-to-end trace + diagram + error branch |
 | `HOW-TO.md` | Build / run / test / change Redis | L3 **how-to**: copy-pasteable, with error strings |
+| `API.md` | Provided commands + consumed libs + feature→API | L3 **API/interface** surface and entry points |
 
 ## How to read it
 

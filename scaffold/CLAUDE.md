@@ -71,6 +71,7 @@ These are the project-specific habits that affect every interaction:
 
 - **Knowledge-base entry for other skills** → `INDEX.md`
 - **Common tasks (build / run / test / change)** → `HOW-TO.md`
+- **APIs, entry points, library interfaces** → `API.md`
 - **Project structure** → `OVERVIEW.md`
 - **Core concepts (deep dives)** → `CONCEPTS.md`
 - **Important call chains** → `FLOWS.md`

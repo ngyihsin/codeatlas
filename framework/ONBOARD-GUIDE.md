@@ -124,10 +124,25 @@ src/
 
 Once the build system and entry points are known (Phase 1) and the structure is mapped (Phase 2), draft `HOW-TO.md` — the common first-week tasks (build, run, one test, land a one-line change). This is a **how-to** doc: procedural steps only, no *why*. Draft the commands now; mark its status `◐` and verify each command `✓` the first time you actually run it on a clean checkout. A how-to that has not been run is not yet trustworthy. See `STANDARD.md` → Trait 9.
 
+### Side Deliverable: Draft API.md (provided + consumed surface)
+
+While mapping structure, capture the **interface surface** in `API.md`:
+
+- The **provided API surface** — the public functions/classes/headers, CLI commands,
+  endpoints, or entry-point macros this codebase exposes. Mark the ones that are good
+  **entry points** for tracing.
+- The **consumed library interfaces** — from the dependency list in the build config
+  (Phase 1), the slice of each library the code calls directly and the wrapper that
+  adapts it.
+
+The **feature → API map** is filled in later, as flows are traced (Phase 5). See
+`STANDARD.md` → "Documenting APIs and Interfaces".
+
 ### Done Criteria
 
 - OVERVIEW.md has the structural map
 - HOW-TO.md drafted (commands may still be `◐` until first run)
+- API.md drafted: provided entry points + consumed library interfaces
 - ONBOARD-CHECKLIST.md Phase 2 ticked
 - HANDOFF.md updated with "next: Phase 3 (Reverse Recommendation)"
 
@@ -314,6 +329,7 @@ This is the "Life of a Pixel" artifact — the single highest-value document for
 - Mermaid sequence diagram present and rendered
 - Tagged for verification
 - Verification commit hash recorded
+- API.md "Feature → API map" gains a row for this flow: the feature, its entry-point API, the consumed interfaces it uses, and a link back to this flow
 - ONBOARD-CHECKLIST.md Phase 5 ticked
 - HANDOFF.md updated
 

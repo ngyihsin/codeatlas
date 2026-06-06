@@ -23,6 +23,7 @@ Python test/packaging side, and CMake glue tying them together.
 | `CONCEPTS.md` | Type casters + the `internals` registry | L3 **data-structure** entry: fields, *why*, API usage |
 | `FLOWS.md` | "Calling a bound C++ function from Python" | L3 **flow** across the C++/Python boundary |
 | `HOW-TO.md` | Configure / build / test with **CMake** | L3 **how-to**: CMake commands, with error strings |
+| `API.md` | Binding API + the CPython C-API it consumes | L3 **API/interface** surface — the consumed-interface case |
 
 ## Why pybind11 for the C++/Python/CMake example
 

@@ -46,7 +46,8 @@ $ ./src/redis-server --port 6379        # run
 $ ./runtest --single unit/type/string   # one test
 ```
 
-Full steps and error strings: `HOW-TO.md`.
+Full steps and error strings: `HOW-TO.md`. Public commands, consumed libraries, and
+feature→API map: `API.md`.
 
 ## Project Conventions That Aren't Obvious
 

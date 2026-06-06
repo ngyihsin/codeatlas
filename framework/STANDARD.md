@@ -68,9 +68,9 @@ The "capture the *why* and a rejected alternative" rule below applies to
 **explanation** docs. It does **not** apply to reference or how-to docs. A "how do
 I run one test" doc that pauses to explain rejected alternatives is a *bad* doc.
 
-## The Nine Traits of Professional Large-Codebase Documentation
+## The Ten Traits of Professional Large-Codebase Documentation
 
-A document set hits the bar when it has all nine. Each maps to a file in this
+A document set hits the bar when it has all ten. Each maps to a file in this
 template, so "write good docs" becomes "fill these files to this standard."
 
 | # | Trait | What it means | Delivered by |
@@ -84,9 +84,10 @@ template, so "write good docs" becomes "fill these files to this standard."
 | 7 | **Provenance and drift control** | Every claim is anchored to a commit hash and re-verified on a schedule — ideally enforced by a CI check that flags when cited code changes. | Verification tags, Phase 7, `tools/check-doc-drift.sh` |
 | 8 | **Honest about its own gaps** | Verified knowledge is separated from guesses. What is *not* understood is written down, not hidden. | `✓ / ◐ / ?` tags, `OPEN-QUESTIONS.md` |
 | 9 | **A common-tasks how-to** | The 3–5 things a new hire does in week one — build, run, test, land a one-line change — as copy-pasteable steps with expected output. | `OVERVIEW.md` or a `HOW-TO.md` |
+| 10 | **The API & interface surface** | What the codebase *exposes* (public APIs, CLI, endpoints, entry-point macros), what library interfaces it *consumes*, and which APIs power which features. The public surface is where a trace starts. | `API.md` |
 
 If a trait is missing, the document set is incomplete — no matter how many pages it
-has. Length is not the measure. Coverage of these nine is.
+has. Length is not the measure. Coverage of these ten is.
 
 ## Every Document Starts the Same Way
 
@@ -134,6 +135,10 @@ minimum to be useful to anyone but the author.
   the "Life of a Pixel" bar.
 - **How-to (L3):** A new hire pastes the steps and they work, first try, on a clean
   checkout. Expected output is shown so they know it worked.
+- **API.md (L3):** A reader can name the codebase's public entry points and start a
+  trace from any of them, see which library interfaces each feature consumes, and go
+  from a named feature to its starting symbol and flow without searching. An API doc
+  that lists symbols but marks no entry points and maps no feature is not yet L3.
 - **CLAUDE.md (L3):** Under 200 lines, every line earns its place in *every* future
   session, and the task→location table answers the most common "where do I look"
   questions without a search.
@@ -156,6 +161,34 @@ include three parts:
    how the API must be called.
 
 See `EXAMPLES.md` → "Documenting a Key Data Structure" for a full worked entry.
+
+## Documenting APIs and Interfaces
+
+The **interface surface** is where reading a codebase starts. The public API is the
+set of front doors, so it is the best place to begin a trace; the libraries a codebase
+consumes are where a trace leaves it. `API.md` captures both directions, plus the map
+from features to the APIs that implement them.
+
+Capture three things:
+
+1. **The provided API surface** — what the codebase *exposes*: public
+   functions/classes/headers, CLI commands, network/RPC endpoints, plugin and config
+   interfaces, and any top-level entry-point macro or `main`. Mark each that is a good
+   **entry point** for tracing and link it to its flow. A reader who knows the public
+   surface can find any feature's starting line.
+2. **The consumed library interfaces** — for each external dependency *and* major
+   internal module boundary, the *slice* of its interface the code actually calls, and
+   the wrapper/adapter where that call happens. This answers "what does this depend on,
+   and where does a trace leave this codebase?" List only directly-used interfaces, not
+   every transitive dependency.
+3. **The feature → API map** — for each user-visible feature, the provided entry-point
+   API, the key consumed interfaces it relies on, and the flow it triggers. This is the
+   fast path from "I care about feature X" to "here is where it starts and what it
+   touches."
+
+Entry points, not exhaustiveness, are the goal: a newcomer needs the doors and the
+dependency edges, not a generated list of every symbol. See `EXAMPLES.md` →
+"Documenting the API & Interface Surface" for a worked entry.
 
 ## Writing for Agent Readers
 
@@ -245,6 +278,8 @@ checks that they actually *work* on a reader. Both matter; outcomes matter more.
 - [ ] **At least three CONCEPTS.md entries** are L3, including the single hardest
       concept and at least one **key data structure with a worked API example**.
 - [ ] **A common-tasks how-to** exists and works on a clean checkout.
+- [ ] **API.md** lists the provided entry points (with at least one linked to a flow)
+      and the consumed library interfaces, and maps at least one feature to its API.
 - [ ] **CLAUDE.md** is ≤200 lines and names no concept/flow that does not exist in
       the detailed docs.
 - [ ] **Every code claim** has a stable anchor (`file + symbol`) and a `✓ / ◐ / ?`
@@ -264,6 +299,8 @@ checks that they actually *work* on a reader. Both matter; outcomes matter more.
 - [ ] **Actionability (for consuming skills):** given only `INDEX.md`, a skill can,
       for a sample issue, locate the code (`file + symbol`), name the invariant it
       must not break, and cite the relevant flow — without re-exploring the source.
+- [ ] **Traceability:** given a named feature, a reader can find its entry-point API
+      in `API.md` and start a trace from it without searching the source.
 
 ## Amateur Tells: How to Spot Documentation That Will Not Help Anyone
 
@@ -273,6 +310,8 @@ If your draft does any of these, it is below the bar. Fix it before committing.
   the *reader's* questions, not your reading order.
 - **Documents the verbs but not the nouns.** Traces flows but never explains the
   load-bearing data structures the flows move through.
+- **Hides the front doors.** Explains internals but never names the public API surface
+  a reader would trace *from*, or the library interfaces the code depends on.
 - **Lists files without saying why they matter.** A directory listing is not a map.
 - **States what without why** (in an explanation doc). "Uses a red-black tree" —
   but *why*, and what breaks if you change it?

@@ -48,7 +48,8 @@ $ cmake --build build -j                      # build the test modules
 $ python3 -m pytest tests/test_methods_and_attributes.py -v   # one test
 ```
 
-Full steps, consumer CMakeLists, and error strings: `HOW-TO.md`.
+Full steps, consumer CMakeLists, and error strings: `HOW-TO.md`. The binding API and
+the CPython C-API it consumes: `API.md`.
 
 ## Project Conventions That Aren't Obvious
 

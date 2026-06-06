@@ -4,7 +4,7 @@ Concrete examples of how this template is used on real codebases. These are illu
 
 > **Want a complete, filled example?** See the `examples/` directory at the repository
 > root — full L3 reference instances (OVERVIEW, a data-structure CONCEPT, a FLOW,
-> HOW-TO, CLAUDE, and a consumer INDEX):
+> HOW-TO, API, CLAUDE, and a consumer INDEX):
 > - `examples/redis-onboarding-notes/` — Redis (C, `make`)
 > - `examples/pybind11-onboarding-notes/` — pybind11 (C++ + Python, **CMake**)
 >
@@ -208,4 +208,31 @@ Why this entry is L3: it leads with a concrete example, gives the data structure
 a scannable table with invariants, ties each design choice to the constraint that
 forced it, shows a real API call whose every line is explained by that rationale,
 and marks its one unknown honestly.
+
+## Example: Documenting the API & Interface Surface
+
+`API.md` captures two directions — what the codebase *provides* and what library
+interfaces it *consumes* — plus a feature→API map. The two worked instances show both
+cases:
+
+- **Redis** (`examples/redis-onboarding-notes/API.md`) — the *provided* surface is the
+  RESP command set (the public API) and the module C API; the *consumed* interfaces are
+  jemalloc (via `zmalloc`), the OS poller (via `ae`), and Lua. The feature→API map goes
+  from "read a value" → `getCommand` → the `dict` and reply APIs → the `GET` flow.
+- **pybind11** (`examples/pybind11-onboarding-notes/API.md`) — the clearest *consumed*
+  case: pybind11's whole job is to adapt the **CPython C-API**, so that one interface
+  dominates the consumed table. Its *provided* surface is the binding DSL
+  (`PYBIND11_MODULE`, `def`, `class_`) plus the `pybind11_add_module` CMake function.
+
+A provided-surface row marks whether the API is an **entry point** and links it to a
+flow, so a reader can start a trace from it:
+
+```markdown
+| API / Symbol | Kind | Anchor | Stability | Entry point? | Purpose |
+|---|---|---|---|---|---|
+| `module_::def` | method | `include/pybind11/pybind11.h` (search `"class module_"`) | public | yes → FLOWS "Calling a bound C++ function from Python" | Bind a C++ function as a Python callable |
+```
+
+This is what makes the docs useful for **code tracing**: the public surface is the set
+of doors, and each door points at the flow behind it.
 

@@ -41,6 +41,7 @@ taxonomy: `.docforge/framework/MANIFEST.md`.
 | `CONCEPTS.md` | Core abstractions, deep-dived (authored) |
 | `FLOWS.md` | Concrete call chains for user-visible behaviors (authored) |
 | `HOW-TO.md` | Copy-pasteable common first-week tasks (authored) |
+| `API.md` | Provided APIs / entry points, consumed library interfaces, feature→API map (authored) |
 | `OPEN-QUESTIONS.md` | Things we don't yet understand (authored) |
 | `CLAUDE.md` | ≤200-line per-session context (curated) |
 | `HANDOFF.md` | Last session, next step, state sentinel + version pin (state) |
