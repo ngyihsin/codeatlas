@@ -5,14 +5,15 @@ template produces at the **L3 ("professional")** level. It documents a real
 codebase — [Redis](https://github.com/redis/redis) — so a new hire can see the bar,
 not just the blank templates.
 
-> **Read this caveat first.** These notes were authored from knowledge of Redis, not
-> from a live checkout in this session. Every code claim is therefore tagged `◐`
-> (read-only) at best, and every anchor uses `file → symbol (search "…")` rather than
-> a line number — line numbers drift and were never measured here. Redis also changes
-> across major versions; version-sensitive details are flagged inline. **Before
-> acting on anything here, re-verify against your own checkout** and set the real
-> commit hash in each `Last verified against commit:` field. This is exactly the
-> honesty discipline `STANDARD.md` requires; the instance models it on purpose.
+> **Read this caveat first.** Anchors were **verified against `redis/redis` @`4625b89`
+> (the `unstable` dev branch) on 2026-06-06**: every cited file and symbol was
+> confirmed present at the stated location. Behavioral claims (the mechanism behind a
+> flow, an invariant) were **read, not run**, so they stay tagged `◐` (read-only).
+> Anchors use `file → symbol (search "…")`, never line numbers. Because `unstable` is
+> dev, a stable release may differ; the most notable drift is flagged inline (e.g.
+> keyspace lookups now return `kvobj*`, and `redisObject` lives in `src/object.h`).
+> Re-verify against *your* checkout's commit before acting. This is the honesty
+> discipline `STANDARD.md` requires; the instance models it on purpose.
 
 ## What's here
 

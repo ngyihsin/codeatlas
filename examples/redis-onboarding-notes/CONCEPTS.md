@@ -13,8 +13,8 @@
 **Before you begin:** none
 **Owner:** _(example instance — unowned)_
 **Anchor:** `src/dict.c` / `src/dict.h` → `dict` (search `"struct dict"`)
-**Last verified against commit:** _(fill from your checkout)_   **Status:** ◐ Read-only
-**Last verified date:** _(fill in)_
+**Last verified against commit:** 4625b89 (redis unstable)   **Status:** ◐ Read-only
+**Last verified date:** 2026-06-06
 
 ### Concrete Example First
 
@@ -134,7 +134,7 @@ is wrong whenever `rehashidx >= 0`.
 
 ## Concept: `redisObject` — the boxed value (brief)
 
-**Anchor:** `src/server.h → redisObject` (search `"struct redisObject"`) · **Status:** ◐
+**Anchor:** `src/object.h → redisObject` (search `"struct redisObject"`) · **Status:** ◐
 
 Every value Redis stores is a `redisObject` (`robj`): a small box with `type` (string,
 list, hash, …), `encoding` (how it is physically stored, e.g. `int`, `embstr`, `raw`),
@@ -154,6 +154,6 @@ a 24-bit `lru` field for eviction, a `refcount`, and a `void *ptr` to the payloa
 | File / Path | Concept(s) |
 |---|---|
 | `src/dict.c`, `src/dict.h` | `dict` / incremental rehashing |
-| `src/server.h → redisObject` | `redisObject` |
+| `src/object.h → redisObject` | `redisObject` |
 | `src/db.c` | uses `dict` (keyspace) |
 | `src/object.c` | `redisObject` lifecycle |

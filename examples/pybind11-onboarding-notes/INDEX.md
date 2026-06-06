@@ -4,12 +4,13 @@
 **Audience:** an agent or skill here to do a task on pybind11; humans wanting the map
 **Before you begin:** none
 **Owner:** _(example instance — unowned)_
-**Last verified against commit:** _(fill from your checkout)_   **Status:** ◐ Read-only
+**Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ◐ Read-only
 **Index schema:** v1 — column meanings stable within a major version
 
-> Illustrative reference instance. Every row is `◐` (authored from knowledge, not a
-> live checkout) and anchored by `file → symbol`. **Re-verify before acting.**
-> To *build* these notes you would read `AGENT-warm-up.md`; this is the *consume* entry.
+> Illustrative reference instance. Anchors **verified against `pybind11` @`6079989`
+> (v3.1.0, 2026-06-06)**; rows stay `◐` because behavior was read, not run. Re-verify
+> before acting. To *build* these notes you would read `AGENT-warm-up.md`; this is the
+> *consume* entry.
 
 ## Consumption Protocol (read before acting)
 

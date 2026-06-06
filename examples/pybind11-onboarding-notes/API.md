@@ -5,8 +5,8 @@
 **You are assumed to know:** C++ and that Python objects are `PyObject*`
 **Before you begin:** read `OVERVIEW.md`
 **Owner:** _(example instance — unowned)_
-**Last verified against commit:** _(fill from your checkout)_   **Status:** ◐ Read-only
-**Last verified date:** _(fill in)_
+**Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ◐ Read-only
+**Last verified date:** 2026-06-06
 
 > Illustrative reference instance. Anchors are `file → symbol`; re-verify before use.
 > pybind11 is unusual: its *provided* API is the binding DSL, and its single most
@@ -18,7 +18,7 @@
 
 | API / Symbol | Kind | Anchor | Stability | Entry point? | Purpose |
 |---|---|---|---|---|---|
-| `PYBIND11_MODULE(name, m)` | macro | `include/pybind11/pybind11.h` (search `"PYBIND11_MODULE"`) | public | **yes** | Defines the module; expands to CPython `PyInit_<name>` |
+| `PYBIND11_MODULE(name, m)` | macro | `include/pybind11/detail/common.h` (search `"define PYBIND11_MODULE"`) | public | **yes** | Defines the module; expands to CPython `PyInit_<name>` |
 | `module_::def(name, fn, …)` | method | `include/pybind11/pybind11.h` (search `"class module_"`) | public | **yes** → FLOWS "Calling a Bound C++ Function from Python" | Bind a C++ function as a Python callable |
 | `class_<T>(m, "Name")` | template | `include/pybind11/pybind11.h` (search `"class class_"`) | public | yes | Bind a C++ class as a Python type |
 | `PYBIND11_TYPE_CASTER(T, name)` | macro | `include/pybind11/cast.h` (search `"PYBIND11_TYPE_CASTER"`) | public | no | Declare a custom type conversion |
@@ -35,7 +35,7 @@ calls directly. Not exhaustive: only directly-used interfaces.
 | CMake (build system) | targets, `find_package`, suffix/flags | `tools/pybind11NewTools.cmake`, `tools/pybind11Common.cmake` | Building extension modules portably |
 | NumPy C-API (optional) | array buffer protocol | `include/pybind11/numpy.h` | Only if `numpy.h` is included — array casters |
 | internal: dispatcher → conversion | `type_caster<T>`: `load` (Py→C++) / `cast` (C++→Py) | `include/pybind11/cast.h` — detailed in `CONCEPTS.md` → `type_caster` | The contract every type crossing the boundary implements |
-| internal: value → holder | holder interface (`std::unique_ptr` / `shared_ptr` wrappers) | `include/pybind11/detail/smart_holder.h` (and `cast.h`) | How a bound object owns its C++ instance |
+| internal: value → holder | holder interface (`std::unique_ptr` / `shared_ptr` wrappers) | `include/pybind11/detail/struct_smart_holder.h` (and `value_and_holder.h`) | How a bound object owns its C++ instance |
 
 ## Feature → API Map
 

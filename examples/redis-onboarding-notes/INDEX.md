@@ -4,13 +4,13 @@
 **Audience:** an agent or skill here to do a task on Redis; humans wanting the map
 **Before you begin:** none
 **Owner:** _(example instance — unowned)_
-**Last verified against commit:** _(fill from your checkout)_   **Status:** ◐ Read-only
+**Last verified against commit:** 4625b89 (redis unstable)   **Status:** ◐ Read-only
 **Index schema:** v1 — column meanings stable within a major version
 
-> Illustrative reference instance. Every row is `◐` (authored from knowledge, not a
-> live checkout) and anchored by `file → symbol`. **Re-verify before acting.**
-> To *build* these notes, you would read `AGENT-warm-up.md`; this is the *consume*
-> entry point.
+> Illustrative reference instance. Anchors **verified against `redis` @`4625b89`**
+> (2026-06-06); rows stay `◐` because behavior was read, not run. Re-verify before
+> acting. To *build* these notes you would read `AGENT-warm-up.md`; this is the
+> *consume* entry point.
 
 ## Consumption Protocol (read before acting)
 
@@ -30,7 +30,7 @@
 | Concept | Anchor | Status | What breaks without it | Use when |
 |---|---|---|---|---|
 | `dict` + incremental rehashing | `src/dict.c` → `dict` (search `"struct dict"`) | ◐ | You assume one bucket array and lose keys during a resize | Touching the keyspace, a data type, or expiration |
-| `redisObject` (`robj`) | `src/server.h` → `redisObject` | ◐ | You mutate a shared/immutable value object | Reading or creating any stored value |
+| `redisObject` (`robj`) | `src/object.h` → `redisObject` | ◐ | You mutate a shared/immutable value object | Reading or creating any stored value |
 | Single-threaded execution | `src/server.c` → `call` | ◐ | You add needless locks, or assume concurrency that isn't there | Any command-path change |
 
 → Detail: `CONCEPTS.md`
@@ -48,7 +48,7 @@
 | Structure | Anchor | Invariants documented in |
 |---|---|---|
 | `dict` | `src/dict.h` → `dict` | `CONCEPTS.md` → `dict` |
-| `redisObject` | `src/server.h` → `redisObject` | `CONCEPTS.md` → `redisObject` |
+| `redisObject` | `src/object.h` → `redisObject` | `CONCEPTS.md` → `redisObject` |
 
 ### APIs, Entry Points & Interfaces
 

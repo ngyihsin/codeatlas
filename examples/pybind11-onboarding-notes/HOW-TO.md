@@ -6,7 +6,7 @@
 **Before you begin:** a clean checkout of `pybind/pybind11`; CMake ≥ 3.15; a C++11
 compiler; Python (with development headers) and `pytest`
 **Owner:** _(example instance — unowned)_
-**Last verified against commit:** _(fill from your checkout)_   **Status:** ◐ Read-only
+**Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ◐ Read-only
 
 > Procedural steps only — for *why*, see `CONCEPTS.md`. This codebase is **CMake**, not
 > `make`. Confirm commands on your checkout; promote to `✓` once you run them.

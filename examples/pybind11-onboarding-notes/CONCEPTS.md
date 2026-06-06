@@ -13,8 +13,8 @@
 **Before you begin:** none
 **Owner:** _(example instance — unowned)_
 **Anchor:** `include/pybind11/cast.h → type_caster` (search `"class type_caster"`)
-**Last verified against commit:** _(fill from your checkout)_   **Status:** ◐ Read-only
-**Last verified date:** _(fill in)_
+**Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ◐ Read-only
+**Last verified date:** 2026-06-06
 
 ### Concrete Example First
 

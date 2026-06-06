@@ -13,8 +13,8 @@
 **Owner:** _(example instance — unowned)_
 **Trigger:** Python code calls a function that was bound with `m.def(...)`, e.g.
 `example.add(2, 3)`
-**Last verified against commit:** _(fill from your checkout)_   **Status:** ◐ Read-only
-**Last verified date:** _(fill in)_
+**Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ◐ Read-only
+**Last verified date:** 2026-06-06
 
 > One canonical path — the single-overload success case — omitting the multi-overload
 > and keyword-argument details. The required error branch is the "no matching

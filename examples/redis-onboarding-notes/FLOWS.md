@@ -12,8 +12,8 @@
 **Before you begin:** read `CONCEPTS.md → dict` (the lookup step uses it)
 **Owner:** _(example instance — unowned)_
 **Trigger:** a client sends `GET <key>` over a TCP connection (RESP protocol)
-**Last verified against commit:** _(fill from your checkout)_   **Status:** ◐ Read-only
-**Last verified date:** _(fill in)_
+**Last verified against commit:** 4625b89 (redis unstable)   **Status:** ◐ Read-only
+**Last verified date:** 2026-06-06
 
 > One canonical path, omitted aggressively (the "Life of a Pixel" lesson). The happy
 > path returns a string value; the required error branch is WRONGTYPE.
@@ -99,6 +99,9 @@ the command logic in 4–9.) This is *why* the lookup needs no locking.
 - **Lazy expiration is on this path.** Step 7 calls `expireIfNeeded`
   (`src/db.c`), so a logically-expired key can be deleted *during a read*. A `GET`
   is not purely read-only from the keyspace's point of view.
+- **Version note (verified @`4625b89`).** In the 8.x line, `lookupKey` /
+  `lookupKeyReadWithFlags` return `kvobj *` (the keyspace object type), not `robj *` as
+  the diagram shows; `kvobj` is a `redisObject` variant. The call chain is unchanged.
 
 ---
 

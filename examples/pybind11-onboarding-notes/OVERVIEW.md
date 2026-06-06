@@ -5,8 +5,8 @@
 **You are assumed to know:** C++ templates, basic CPython (PyObject, refcounts), CMake
 **Before you begin:** none — this is the starting point
 **Owner:** _(example instance — unowned)_
-**Last verified against commit:** _(fill from your checkout)_   **Status:** ◐ Read-only
-**Last verified date:** _(fill in)_
+**Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ◐ Read-only
+**Last verified date:** 2026-06-06
 
 > Illustrative reference instance. Anchors are `file → symbol`; re-verify before use.
 

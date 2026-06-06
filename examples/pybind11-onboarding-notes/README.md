@@ -6,12 +6,14 @@ one for a **C++ + Python codebase built with CMake**:
 C systems codebase, this one shows a **polyglot library**: a header-only C++ side, a
 Python test/packaging side, and CMake glue tying them together.
 
-> **Read this caveat first.** These notes were authored from knowledge of pybind11,
-> not from a live checkout in this session. Every code claim is tagged `◐`
-> (read-only), and every anchor uses `file → symbol (search "…")` rather than a line
-> number. pybind11 moves across versions (headers get split out, e.g. `gil.h`);
-> version-sensitive details are flagged inline. **Re-verify against your own checkout
-> and set the real commit hash** in each `Last verified against commit:` field.
+> **Read this caveat first.** Anchors were **verified against `pybind/pybind11`
+> @`6079989` (v3.1.0) on 2026-06-06**: every cited file and symbol was confirmed
+> present. Behavioral claims (a flow's mechanism, an invariant) were **read, not run**,
+> so they stay tagged `◐`. Anchors use `file → symbol (search "…")`, never line
+> numbers. Two things moved in the 3.x line and are corrected here: `PYBIND11_MODULE`
+> is defined in `detail/common.h` (not `pybind11.h`), and the smart-holder is the
+> default (`detail/struct_smart_holder.h`). Re-verify against *your* checkout's commit
+> before acting; this is the honesty discipline `STANDARD.md` requires.
 
 ## What's here
 

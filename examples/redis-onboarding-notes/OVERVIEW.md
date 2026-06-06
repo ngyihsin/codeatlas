@@ -5,8 +5,8 @@
 **You are assumed to know:** C, sockets, basic data structures
 **Before you begin:** none — this is the starting point
 **Owner:** _(example instance — unowned)_
-**Last verified against commit:** _(fill from your checkout)_   **Status:** ◐ Read-only
-**Last verified date:** _(fill in)_
+**Last verified against commit:** 4625b89 (redis unstable)   **Status:** ◐ Read-only
+**Last verified date:** 2026-06-06
 
 > Illustrative reference instance. Anchors are `file → symbol`; re-verify before use.
 
@@ -61,7 +61,7 @@ redis/
 
 | File | Role in one line |
 |---|---|
-| `server.c` / `server.h` | Startup, the command-dispatch core (`processCommand`, `call`), and `redisObject` |
+| `server.c` / `server.h` | Startup, the command-dispatch core (`processCommand`, `call`) |
 | `networking.c` | Read client input, parse the protocol, build replies (`addReply*`) |
 | `dict.c` / `dict.h` | The hash table behind the keyspace, with incremental rehashing |
 | `t_string.c`, `t_hash.c`, `t_zset.c`, … | Command implementations per data type |

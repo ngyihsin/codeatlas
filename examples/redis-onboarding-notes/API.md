@@ -5,8 +5,8 @@
 **You are assumed to know:** C and the client/server model
 **Before you begin:** read `OVERVIEW.md`
 **Owner:** _(example instance — unowned)_
-**Last verified against commit:** _(fill from your checkout)_   **Status:** ◐ Read-only
-**Last verified date:** _(fill in)_
+**Last verified against commit:** 4625b89 (redis unstable)   **Status:** ◐ Read-only
+**Last verified date:** 2026-06-06
 
 > Illustrative reference instance. Anchors are `file → symbol`; re-verify before use.
 > Process/binary start points (`main`, `redis-cli`, the test runner) live in

@@ -5,7 +5,7 @@
 **You are assumed to know:** a C toolchain and a Unix shell
 **Before you begin:** a clean checkout of `redis/redis`; `make` and a C compiler
 **Owner:** _(example instance — unowned)_
-**Last verified against commit:** _(fill from your checkout)_   **Status:** ◐ Read-only
+**Last verified against commit:** 4625b89 (redis unstable)   **Status:** ◐ Read-only
 
 > Procedural steps only. For *why* anything works this way, see `CONCEPTS.md`.
 > Commands below are standard for recent Redis; confirm on your checkout and promote
