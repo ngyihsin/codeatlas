@@ -61,10 +61,11 @@ docforge-onboard/                 # the framework repo (this repo)
     ONBOARD-GUIDE.md              # the phase-by-phase process
     WRITING-STYLE.md              # writing rules for human + agent readers
     AGENT-PROTOCOL.md             # canonical behavioral rules for the authoring agent
+    GENERATION.md                 # auto-generation pipeline (generate → owner review → drift CI)
     EXAMPLES.md                   # illustrative fragments
     MANIFEST.md                   # the file-role taxonomy (framework / authored / state)
     schema/                       # versioned contracts: index, doc-header, tags
-    tools/                        # check-index.sh, update-framework.sh, check-doc-drift.sh
+    tools/                        # check-index, update-framework, check-doc-drift, build-symbol-index, find-symbol, generate-instance
 
   scaffold/                       # blank fill-in starting point for an instance
     AGENT-warm-up.md              # session entry point
@@ -97,10 +98,23 @@ consumer `INDEX.md` with an invariants registry and task recipes.
 |---|---|---|---|
 | `examples/redis-onboarding-notes/` | Redis | C, `make` | A pure C systems codebase; incremental rehashing; "Life of a `GET`" |
 | `examples/pybind11-onboarding-notes/` | pybind11 | C++ + Python, **CMake** | A polyglot header-only library; type casters across the C++/Python boundary; the GIL and ABI invariants |
+| `examples/onnxruntime-onboarding-notes/` | ONNX Runtime | C++ ML runtime | An ML inference runtime: the ExecutionProvider backend interface, kernel registry, "Life of an inference", and the add-op / add-backend axes |
+| `examples/executorch-onboarding-notes/` | ExecuTorch | C++ + Python edge ML runtime | The same ML-runtime template on a second runtime: AOT lowering, the `BackendInterface` delegate + `Partitioner`, and why delegated subgraphs have no CPU fallback |
 
-Both are illustrative: authored from knowledge of each project, so every claim is
-tagged `◐` and every anchor is `file → symbol` rather than a line number. Read them to
-see what "good" looks like before filling the templates on your own codebase.
+These are illustrative but **verified**: every claim is tagged `◐`/`✓` with provenance,
+anchors are `file → symbol` (not line numbers), and the codebases were built/run to confirm
+behavior (Redis and pybind11 from source; ONNX Runtime via the `onnxruntime` wheel). Read
+them to see what "good" looks like before filling the templates on your own codebase.
+
+## Research: digital-colleague knowledge bases
+
+`docs/research/digital-colleague-kb.md` is a technical architecture + literature review on
+building an **auto-generated, human-reviewed knowledge base** that lets AI "digital
+colleagues" understand a very large codebase and act on it (Jira tickets, features, bugs),
+tuned for **ML runtime/compiler codebases** (QNN, SNPE, Hexagon NN, ExecuTorch, ONNX
+Runtime). It covers token/context efficiency, structured code knowledge, agentic SWE, and
+auto-generation + trust — and frames the recommendation as "what to add" to this framework.
+The ONNX Runtime instance above is the first worked example from that direction.
 
 ## How the Process Works
 

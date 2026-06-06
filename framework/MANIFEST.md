@@ -23,6 +23,7 @@ never rewrites) that `INDEX.md` stays complete.
 | `framework/ONBOARD-GUIDE.md` | framework |
 | `framework/WRITING-STYLE.md` | framework |
 | `framework/AGENT-PROTOCOL.md` | framework |
+| `framework/GENERATION.md` | framework (auto-generation pipeline spec) |
 | `framework/EXAMPLES.md` | framework |
 | `framework/MANIFEST.md` | framework |
 | `framework/schema/*.md` | framework (versioned contract) |
