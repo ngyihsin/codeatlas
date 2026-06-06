@@ -147,7 +147,7 @@ drift detection.
 
 | Capability | Have | Add |
 |---|---|---|
-| Token-budgeted machine index | ✅ INDEX / CLAUDE.md | L2 hierarchical summaries |
+| Token-budgeted machine index | ✅ INDEX / CLAUDE.md + **L2 `build-summary-tree.sh`** (global→subsystem→module skeleton; prototyped) | upgrade: LLM/embedding abstractive summaries (RAPTOR/GraphRAG) |
 | Structured localization | ✅ stable anchors + **L1 symbol index/repo-map + `find-symbol`** (ctags+rg; prototyped in `framework/tools/`) | richer upgrade: tree-sitter/LSP/SCIP/stack-graphs |
 | Trust / anti-drift | ✅ tags + provenance + drift CI | **executable (doctest-style) how-tos** |
 | Auto-generation + review | ✅ **`generate-instance.sh` (deterministic draft) + `GENERATION.md` pipeline** (generator-agent loop + CODEOWNERS gate + drift CI); prototyped | upgrade: a fully autonomous generator agent run in CI |

@@ -11,6 +11,7 @@ Automation that keeps an instance honest and in sync with the framework. These a
 | `build-symbol-index.sh` | **L1 code index:** build a symbol table + a token-budgeted "repo map" of the most-referenced symbols (universal-ctags + ripgrep). |
 | `find-symbol.sh` | **L1 localization:** resolve a symbol → its definition `file → symbol` anchor + reference sites. |
 | `generate-instance.sh` | **Auto-gen (deterministic half):** draft an instance from a checkout — copy scaffold + L1 index + seed structural map / entry points / candidate concepts / provenance into `DRAFT-SEED.md`. |
+| `build-summary-tree.sh` | **L2 hierarchical summaries:** a token-budgeted tree (global → subsystem → module) with per-node top symbols + `summary:` slots, for cheap *global* questions. |
 
 None of these tools modify your authored docs — they verify, report, or index.
 
@@ -35,6 +36,22 @@ These produce/validate the framework's stable `file → symbol` anchors. Validat
 source: `find-symbol redis/src dictFind` → `dict.c → dictFind` (matches the Redis instance);
 `find-symbol pybind11/include type_caster` → `cast.h → type_caster` (matches the pybind11
 instance). Requires `ctags` (universal-ctags) and `rg` on PATH.
+
+## L2 hierarchical summaries (`build-summary-tree.sh`)
+
+For **global / sensemaking** questions over a huge codebase, a flat index is the wrong tool —
+the research points to hierarchical summaries (RAPTOR / GraphRAG community summaries): read the
+top, drill down only where needed.
+
+```
+framework/tools/build-summary-tree.sh <codebase> [out_dir] [depth] [syms_per_node]
+#   -> summary-tree.md: global → subsystem (top dir) → module (subdir), each node listing its
+#      subtree file count + most-referenced symbols, with a `summary:` slot (◐) per node.
+```
+Reuses the L1 index; builds the **tree + factual rollup** deterministically and leaves the
+abstractive `summary:` for the generator agent (never fabricated). Read order for an agent:
+global → subsystem → module → `find-symbol.sh` → the code. (Validated: a depth-2 tree over the
+Redis checkout — 1812 files, 9 subsystems, top symbols per node.)
 
 ## Auto-generation pipeline (`generate-instance.sh`)
 
