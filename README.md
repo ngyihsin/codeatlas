@@ -59,6 +59,19 @@ template/
     SESSION-LOG-TEMPLATE.md   # Format for each session log
 ```
 
+## A Worked Reference Instance
+
+The blank templates show the *structure*; `examples/redis-onboarding-notes/` shows
+the *bar*. It is a complete, filled set of notes for a real codebase (Redis) at the
+**L3 ("professional")** level — `OVERVIEW`, a data-structure `CONCEPTS` entry
+(incremental rehashing, with the *why* and a worked API call), a `FLOWS` trace
+("Life of a `GET`" with its error branch), a `HOW-TO`, a lean `CLAUDE.md`, and a
+consumer `INDEX.md` with an invariants registry and task recipes.
+
+It is illustrative: authored from knowledge of Redis, so every claim is tagged `◐`
+and every anchor is `file → symbol` rather than a line number. Read it to see what
+"good" looks like before filling the templates on your own codebase.
+
 ## How the Process Works
 
 The onboarding follows six phases. Unlike docforge, **understanding is never "complete"** — phases can be revisited, and the checklist tracks ongoing progress rather than a one-shot init.

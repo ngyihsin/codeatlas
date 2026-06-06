@@ -2,6 +2,11 @@
 
 Concrete examples of how this template is used on real codebases. These are illustrative only. Do not copy them into your own notes; they belong here, not in your project's working files.
 
+> **Want a complete, filled example?** See `examples/redis-onboarding-notes/` at the
+> repository root — a full L3 reference instance for Redis (OVERVIEW, a data-structure
+> CONCEPT, a FLOW, HOW-TO, CLAUDE, and a consumer INDEX). The snippets below are
+> focused fragments; that directory is the whole set.
+
 ## Example: Chromium Subsystems Tracker
 
 A Chromium-scale codebase is too large to onboard as a single unit. Track progress per subsystem in `ONBOARD-CHECKLIST.md` under "Subsystems Tackled":
