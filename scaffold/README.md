@@ -25,24 +25,38 @@ It routes to the right knowledge and defines what is safe to act on.
 
 ## Document Index
 
+These are the files **you own** in this instance. The methodology they follow lives
+in the read-only framework cache `.docforge/framework/` (pinned to `template_version`
+in `HANDOFF.md`). You edit the *authored* files; the *generated* registry in
+`INDEX.md` is rebuilt by `tools/generate.sh`; you never hand-edit the cache. Full role
+taxonomy: `.docforge/framework/MANIFEST.md`.
+
+**Instance files (you own):**
+
 | Document | Role |
 |---|---|
-| `AGENT-warm-up.md` | Single bootstrap file for the **authoring** agent, read every session |
-| `INDEX.md` | Entry point for **consuming** skills: machine-readable map, invariants registry, task recipes |
-| `STANDARD.md` | What "good" looks like: the quality bar, exemplars, and maturity rubric |
+| `AGENT-warm-up.md` | Bootstrap for the **authoring** agent, read every session (state) |
+| `INDEX.md` | Entry point for **consuming** skills (authored map + generated registry) |
+| `OVERVIEW.md` | What the project is, top-level structure (authored) |
+| `CONCEPTS.md` | Core abstractions, deep-dived (authored) |
+| `FLOWS.md` | Concrete call chains for user-visible behaviors (authored) |
+| `HOW-TO.md` | Copy-pasteable common first-week tasks (authored) |
+| `OPEN-QUESTIONS.md` | Things we don't yet understand (authored) |
+| `CLAUDE.md` | ≤200-line per-session context (curated) |
+| `HANDOFF.md` | Last session, next step, state sentinel + version pin (state) |
+| `ONBOARD-CHECKLIST.md` | Phase / topic completion tracking (state) |
+| `logs/` | Per-session detailed logs (state) |
+
+**Framework cache (`.docforge/framework/`, read-only):**
+
+| Document | Role |
+|---|---|
+| `STANDARD.md` | The quality bar, exemplars, maturity rubric |
 | `ONBOARD-GUIDE.md` | Phase definitions and workflow |
-| `ONBOARD-CHECKLIST.md` | Phase / topic completion tracking |
-| `OVERVIEW.md` | What the project is, top-level structure |
-| `CONCEPTS.md` | Core abstractions, deep-dived |
-| `FLOWS.md` | Concrete call chains for user-visible behaviors |
-| `HOW-TO.md` | Copy-pasteable steps for the common first-week tasks (build, run, test, land a change) |
-| `CLAUDE.md` | ≤200-line per-session bootstrap context |
-| `HANDOFF.md` | Last session summary, next step, session-state sentinel |
-| `OPEN-QUESTIONS.md` | Things we don't yet understand |
-| `WRITING-STYLE.md` | Writing rules for non-native readers; diagram guidance |
-| `EXAMPLES.md` | Illustrative examples (Chromium, monorepos, forks) |
-| `tools/` | Optional automation (e.g. `check-doc-drift.sh` for CI drift detection) |
-| `logs/` | Per-session detailed logs |
+| `WRITING-STYLE.md` | Writing rules for non-native readers; diagrams |
+| `AGENT-PROTOCOL.md` | Canonical behavioral rules |
+| `EXAMPLES.md` | Illustrative fragments |
+| `MANIFEST.md`, `schema/`, `tools/` | File-role taxonomy, versioned contracts, automation |
 
 ## How Far Along Are We?
 

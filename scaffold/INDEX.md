@@ -233,6 +233,15 @@ code** (the sibling `docforge` direction). Ground the design in current reality:
 4. **Write back:** if you discover an undocumented dependency, add it to the
    concept's Connections.
 
+<!-- GENERATED:registry START — do not edit; run framework/tools/generate.sh -->
+### Concept & Flow Registry (generated)
+
+| Kind | Name | Anchor | Status |
+|---|---|---|---|
+| flow | _<User-Visible Action>_ | _(what starts this — a button click, a network packet, a timer fires, etc.)_ | ✓ |
+| flow | _<Next Action>_ | — | — |
+<!-- GENERATED:registry END -->
+
 ## How This Index Stays True
 
 This file is **derived** from `CONCEPTS.md`, `FLOWS.md`, and `HOW-TO.md`. It is

@@ -17,47 +17,71 @@ Both share the same architecture: a single warm-up entry point, phased progressi
 
 ## Quick Start
 
-1. Copy the template into your target codebase (or a sibling directory):
+1. Create a notes **instance** from the scaffold, inside or beside your codebase:
 
    ```
-   cp -r docforge-onboard/template my-codebase-notes
+   cp -r docforge-onboard/scaffold my-codebase-notes
    ```
 
-2. Open `my-codebase-notes/AGENT-warm-up.md` and fill in the three placeholders: project name, codebase path, primary languages.
+2. Add the **framework** as a pinned, read-only dependency of the instance:
 
-3. Start a conversation with your AI agent:
+   ```
+   docforge-onboard/framework/tools/update-framework.sh my-codebase-notes
+   ```
+
+   This populates `my-codebase-notes/.docforge/framework/` and records the version.
+   You reference the framework — you never copy-and-edit it. See `GOVERNANCE.md`.
+
+3. Open `my-codebase-notes/AGENT-warm-up.md` and fill in the three placeholders: project name, codebase path, primary languages.
+
+4. Start a conversation with your AI agent:
 
    > "Read my-codebase-notes/AGENT-warm-up.md"
 
-4. The agent detects `ONBOARD-GUIDE.md` and walks you through structured codebase exploration, starting with reading human-written docs (no code yet).
+5. The agent reads the framework (`STANDARD.md`, `ONBOARD-GUIDE.md`) from the cache and walks you through structured exploration, starting with human-written docs (no code yet).
 
-**This is the same step you repeat every session.** `AGENT-warm-up.md` is the single bootstrap file — on the first session it triggers onboarding; on subsequent sessions it loads accumulated understanding and points to `HANDOFF.md` for current state and next exploration target.
+**This is the same step you repeat every session.** `AGENT-warm-up.md` is the single bootstrap file. To use the finished notes to *do* work (fix a bug, build a feature, write a design doc), a skill instead starts at `INDEX.md`.
 
-## What's in the Template
+> **Two readers, two entry points.** The *authoring* agent enters at `AGENT-warm-up.md`; a *consuming* skill enters at `INDEX.md`. See `GOVERNANCE.md` for how the framework, the generated instance, and their update flows are kept separate.
+
+## What's in the Repo
+
+The repository separates the **framework** (the versioned methodology you depend on)
+from the **scaffold** (the blank fill-in files an instance starts from). See
+`GOVERNANCE.md` for the full model.
 
 ```
-template/
-  AGENT-warm-up.md            # Authoring agent reads this at the start of every session
-  INDEX.md                    # Entry point for consuming skills: machine-readable map + invariants + task recipes
-  STANDARD.md                 # What "good" looks like: the quality bar + exemplars (Linux, Chromium, Gecko, Servo)
-  ONBOARD-GUIDE.md            # Step-by-step exploration phases (kept, not deleted)
-  ONBOARD-CHECKLIST.md        # Tracks which phases / topics have been completed
-  OVERVIEW.md                 # What the project is, top-level structure (Phase 1-2)
-  CONCEPTS.md                 # Core abstractions and which files embody them (Phase 3-4)
-  FLOWS.md                    # Important call chains and user-visible flows (Phase 5)
-  HOW-TO.md                   # Copy-pasteable steps for common first-week tasks (build, run, test, change)
-  CLAUDE.md                   # Distilled context for every session (Phase 6, ~200 lines)
-  HANDOFF.md                  # Current understanding state, next exploration target
-  OPEN-QUESTIONS.md           # Things not yet understood, with confidence levels
-  WRITING-STYLE.md            # Writing rules for non-native readers + diagrams
-  EXAMPLES.md                 # Illustrative examples (Chromium, monorepos, forks)
-  README.md                   # This file (in template form, project-specific)
-  tools/
-    check-doc-drift.sh        # CI/local check: flags notes that cite changed code
-    README.md                 # How to run it locally and in GitHub Actions
-  logs/
-    SESSION-LOG-TEMPLATE.md   # Format for each session log
+docforge-onboard/                 # the framework repo (this repo)
+  VERSION  CHANGELOG.md           # framework version + history (SemVer + migration notes)
+  GOVERNANCE.md  CONTRIBUTING.md  # the two change-control flows; how to contribute
+
+  framework/                      # versioned, READ-ONLY methodology (the dependency)
+    STANDARD.md                   # what "good" looks like + exemplars (Linux, Chromium, Gecko, Servo)
+    ONBOARD-GUIDE.md              # the phase-by-phase process
+    WRITING-STYLE.md              # writing rules for human + agent readers
+    AGENT-PROTOCOL.md             # canonical behavioral rules for the authoring agent
+    EXAMPLES.md                   # illustrative fragments
+    MANIFEST.md                   # the file-role taxonomy (framework / authored / generated / state)
+    schema/                       # versioned contracts: index, doc-header, tags
+    tools/                        # generate.sh, update-framework.sh, check-doc-drift.sh
+
+  scaffold/                       # blank fill-in starting point for an instance
+    AGENT-warm-up.md              # session entry point (pins template_version)
+    OVERVIEW.md CONCEPTS.md FLOWS.md HOW-TO.md OPEN-QUESTIONS.md   # authored sources
+    CLAUDE.md                     # curated lean per-session index
+    INDEX.md                      # consumer entry point (generated registry + authored map)
+    HANDOFF.md  ONBOARD-CHECKLIST.md   # state (HANDOFF pins the framework version)
+    README.md                     # the instance's own readme
+    logs/SESSION-LOG-TEMPLATE.md
+
+  examples/                       # filled L3 reference instances (Redis, pybind11)
 ```
+
+A **created instance** (a copy of `scaffold/`) additionally gets a
+`.docforge/framework/` cache — a read-only copy of the framework at the pinned
+version, populated by `update-framework.sh`. You edit the authored files; the
+generated registry in `INDEX.md` is rebuilt by `generate.sh`; you never hand-edit the
+cache. Roles are listed in `framework/MANIFEST.md`.
 
 ## Worked Reference Instances
 
@@ -148,7 +172,7 @@ If yes, your docs are honest. If no, something didn't get distilled.
 
 Before generating anything, know the target. The goal is not "notes" — it is
 documentation good enough that a new hire becomes productive without re-reading
-the whole source tree. `template/STANDARD.md` defines this bar in full, drawing on
+the whole source tree. `framework/STANDARD.md` defines this bar in full, drawing on
 how the largest open codebases actually document themselves:
 
 - **Linux kernel** — a `Documentation/` tree layered by reader, a `MAINTAINERS`
@@ -213,7 +237,7 @@ Don't try to understand everything in one session. Pick one concept (Phase 4) or
 
 CLAUDE.md goes into every session's context window. Every line costs tokens. Resist the urge to dump everything into it. The rule: if the AI could find this information by reading another doc when needed, it does not belong in CLAUDE.md. Only "things that change interpretation of everything else" go in.
 
-Run `wc -l template/CLAUDE.md` before committing. If it is over 200 lines, cut.
+Run `wc -l CLAUDE.md` before committing. If it is over 200 lines, cut.
 
 ### Verify Periodically
 
@@ -233,7 +257,7 @@ A long OPEN-QUESTIONS.md is a sign of intellectual honesty, not failure. The goa
 
 ## Writing for a Global Audience
 
-Notes will be read by developers who use English as a second language and by AI agents across sessions. Follow `template/WRITING-STYLE.md`: short sentences, no idioms, mermaid diagrams for flows, a human technical-writer review before any doc is considered stable.
+Notes will be read by developers who use English as a second language and by AI agents across sessions. Follow `framework/WRITING-STYLE.md`: short sentences, no idioms, mermaid diagrams for flows, a human technical-writer review before any doc is considered stable.
 
 ## Differences from docforge
 

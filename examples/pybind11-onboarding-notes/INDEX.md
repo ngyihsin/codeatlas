@@ -141,10 +141,20 @@ inputs are always the **GIL** and **reference-ownership** invariants, plus the
 reaches *every* bound function call (all argument conversion flows through it) — blast
 radius is the entire binding surface; treat with maximum care.
 
+<!-- GENERATED:registry START — do not edit; run framework/tools/generate.sh -->
+### Concept & Flow Registry (generated)
+
+| Kind | Name | Anchor | Status |
+|---|---|---|---|
+| concept | `type_caster<T>` — the C++ ↔ Python boundary | `include/pybind11/cast.h → type_caster` (search `"class type_caster"`) | ◐ |
+| concept | `handle` vs `object` — borrowed vs owned references (brief) | `include/pybind11/pytypes.h → handle`, `object` | ◐ |
+| flow | Calling a Bound C++ Function from Python | Python code calls a function that was bound with `m.def(...)`, e.g. | ◐ |
+<!-- GENERATED:registry END -->
+
 ## How This Index Stays True
 
 Derived from `CONCEPTS.md`, `FLOWS.md`, and `HOW-TO.md`; refresh when they change.
-Run `../../template/tools/check-doc-drift.sh` (pointed at a pybind11 checkout) to find
+Run `../../framework/tools/check-doc-drift.sh` (pointed at a pybind11 checkout) to find
 which rows cite changed code. If a row points at a section or symbol that no longer
 exists (headers move between versions), the index has drifted — fix it before a skill
 acts on it.

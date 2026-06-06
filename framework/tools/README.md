@@ -1,8 +1,38 @@
 # Tools
 
-Optional automation for keeping the notes honest. Doc-only setups can ignore this
-directory; it becomes valuable once the codebase changes faster than you re-verify
-by hand (Phase 7).
+Automation that keeps an instance honest and in sync with the framework. These are
+**framework** files (in an instance they live in `.docforge/framework/tools/`).
+
+| Tool | Job |
+|---|---|
+| `generate.sh` | Rebuild the generated registry in `INDEX.md` from `CONCEPTS.md` / `FLOWS.md`. `--check` for CI. |
+| `update-framework.sh` | Refresh an instance's `.docforge/framework/` cache to a framework version (touches only the cache). |
+| `check-doc-drift.sh` | Flag which notes cite code paths that changed in the codebase. |
+
+## `generate.sh`
+
+Rebuilds the `GENERATED:registry` block in an instance's `INDEX.md` — a deterministic
+projection of the `## Concept:` and `## Flow:` entries (name, anchor, status). Authored
+sections of `INDEX.md` are never touched.
+
+```
+framework/tools/generate.sh <instance-dir>          # rewrite the block
+framework/tools/generate.sh --check <instance-dir>  # exit 1 if stale (CI gate)
+```
+
+Run it after editing concepts or flows. See `../schema/index.schema.md`.
+
+## `update-framework.sh`
+
+Refreshes the read-only framework cache an instance depends on.
+
+```
+framework/tools/update-framework.sh <instance-dir>
+```
+
+Then bump `template_version` in the instance's `HANDOFF.md` and read the
+`CHANGELOG.md` migration notes for the versions you crossed. See `GOVERNANCE.md`
+→ Flow B.
 
 ## `check-doc-drift.sh`
 
@@ -14,7 +44,7 @@ drift control stops depending on someone remembering to run Phase 7.
 
 ```
 NOTES_DIR=/path/to/notes CODEBASE=/path/to/codebase \
-  template/tools/check-doc-drift.sh origin/main
+  framework/tools/check-doc-drift.sh origin/main
 ```
 
 Exit `0` = nothing cited changed. Exit `1` = drift suspected; the output lists the

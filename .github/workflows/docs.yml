@@ -1,0 +1,25 @@
+name: docs
+
+# Keeps the framework honest: scripts parse, and the generated registry in every
+# scaffold/example INDEX.md is in sync with its authored CONCEPTS.md / FLOWS.md.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scripts parse
+        run: bash -n framework/tools/*.sh
+
+      - name: Generated registry is in sync
+        run: |
+          set -e
+          for dir in scaffold examples/*-onboarding-notes; do
+            [ -f "$dir/INDEX.md" ] || continue
+            framework/tools/generate.sh --check "$dir"
+          done
