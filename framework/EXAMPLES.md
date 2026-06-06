@@ -230,7 +230,7 @@ flow, so a reader can start a trace from it:
 ```markdown
 | API / Symbol | Kind | Anchor | Stability | Entry point? | Purpose |
 |---|---|---|---|---|---|
-| `module_::def` | method | `include/pybind11/pybind11.h` (search `"class module_"`) | public | yes → FLOWS "Calling a bound C++ function from Python" | Bind a C++ function as a Python callable |
+| `module_::def` | method | `include/pybind11/pybind11.h` (search `"class module_"`) | public | yes → FLOWS "Calling a Bound C++ Function from Python" | Bind a C++ function as a Python callable |
 ```
 
 This is what makes the docs useful for **code tracing**: the public surface is the set

@@ -39,7 +39,7 @@
 
 | Flow | Trigger | Error / early-exit branch | Status | Use when |
 |---|---|---|---|---|
-| Calling a bound C++ function from Python | Python calls a `m.def` function | `pybind11.h` → dispatcher (TypeError "incompatible function arguments") | ◐ | Debugging arg conversion or overload resolution |
+| Calling a Bound C++ Function from Python | Python calls a `m.def` function | `pybind11.h` → dispatcher (TypeError "incompatible function arguments") | ◐ | Debugging arg conversion or overload resolution |
 
 → Detail: `FLOWS.md`
 
@@ -50,26 +50,12 @@
 | `internals` | `include/pybind11/detail/internals.h` → `internals` | `CONCEPTS.md` → `type_caster` |
 | `handle` / `object` | `include/pybind11/pytypes.h` → `handle` | `CONCEPTS.md` → `handle` vs `object` |
 
-### Provided APIs / Entry Points
+### APIs, Entry Points & Interfaces
 
-→ Detail: `API.md`
-
-| API / Symbol | Kind | Anchor | Entry point? |
-|---|---|---|---|
-| `PYBIND11_MODULE` | macro | `include/pybind11/pybind11.h` → `PYBIND11_MODULE` | yes |
-| `module_::def` | method | `include/pybind11/pybind11.h` → `module_` | yes → FLOWS "Calling a bound C++ function from Python" |
-| `class_<T>` | template | `include/pybind11/pybind11.h` → `class_` | yes |
-| `pybind11_add_module` | CMake fn | `tools/pybind11NewTools.cmake` | yes (build) |
-
-### Consumed Interfaces
-
-→ Detail: `API.md`
-
-| Library / Module | Interface used | Wrapped at | For |
-|---|---|---|---|
-| CPython C-API | `PyObject`, refcounts, GIL, type creation | `include/pybind11/pytypes.h`, `gil.h` | everything (pybind11 adapts it) |
-| CMake | targets / find_package | `tools/pybind11NewTools.cmake` | building extensions |
-| NumPy C-API (optional) | array buffer protocol | `include/pybind11/numpy.h` | array casters |
+The provided API surface (the binding DSL: `PYBIND11_MODULE`, `def`, `class_`, the
+`pybind11_add_module` CMake function) and the consumed interfaces (dominated by the
+CPython C-API) and feature→API map are authored in **`API.md`** — the single source of
+truth. Being header-only, pybind11's API *is* its entry-point list.
 
 ### Task → Location Map
 

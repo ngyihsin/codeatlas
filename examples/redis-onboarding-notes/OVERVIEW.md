@@ -34,6 +34,9 @@ remote data store with rich types.
 
 ## Entry Points
 
+Process/binary start points. The *callable* API surface (the RESP command set, the
+module API) is in `API.md` → Provided API Surface.
+
 | Entry | Anchor | Notes |
 |---|---|---|
 | Server `main()` | `src/server.c → main` (search `"int main(int argc"`) | Initializes config, the event loop, listeners; then runs `aeMain`. |

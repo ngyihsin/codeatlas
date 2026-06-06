@@ -33,15 +33,11 @@ developers who need native-speed extensions.
 
 ## Entry Points
 
-There is no `main()` — pybind11 is a library. The meaningful entry points are macros,
-templates, and CMake functions.
-
-| Entry | Anchor | Notes |
-|---|---|---|
-| Module definition macro | `include/pybind11/pybind11.h → PYBIND11_MODULE` (search `"PYBIND11_MODULE"`) | Expands to the CPython `PyInit_<name>` module-init function. |
-| CMake module helper | `tools/pybind11NewTools.cmake → pybind11_add_module` | Adds a Python extension target with the right flags/suffix. |
-| Function binding | `include/pybind11/pybind11.h → cpp_function` | Wraps a C++ callable as a Python-callable object. |
-| Class binding | `include/pybind11/pybind11.h → class_` | Registers a C++ type as a Python type. |
+There is no `main()` — pybind11 is a header-only library, so its entry points *are*
+its public API: `PYBIND11_MODULE`, `module_::def`, `class_`, and the
+`pybind11_add_module` CMake function. They are listed once, authoritatively, in
+**`API.md` → Provided API Surface** (with anchors and links to flows). Not duplicated
+here.
 
 ## Structural Map
 

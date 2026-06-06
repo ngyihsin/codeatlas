@@ -21,7 +21,7 @@ Python test/packaging side, and CMake glue tying them together.
 | `INDEX.md` | Entry point for consuming skills | Machine-readable map, invariants registry, task recipes |
 | `OVERVIEW.md` | What pybind11 is + structural map | L3 reference for a **header-only + CMake** project |
 | `CONCEPTS.md` | Type casters + the `internals` registry | L3 **data-structure** entry: fields, *why*, API usage |
-| `FLOWS.md` | "Calling a bound C++ function from Python" | L3 **flow** across the C++/Python boundary |
+| `FLOWS.md` | "Calling a Bound C++ Function from Python" | L3 **flow** across the C++/Python boundary |
 | `HOW-TO.md` | Configure / build / test with **CMake** | L3 **how-to**: CMake commands, with error strings |
 | `API.md` | Binding API + the CPython C-API it consumes | L3 **API/interface** surface — the consumed-interface case |
 

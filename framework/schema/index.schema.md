@@ -25,11 +25,13 @@ A conforming `INDEX.md` contains these sections, in this order:
 | Concepts | Concept, Anchor, Status, What breaks without it, Use when |
 | Flows | Flow, Trigger, Error / early-exit branch, Status, Use when |
 | Key Data Structures | Structure, Anchor, Invariants documented in |
-| Provided APIs / Entry Points | API / Symbol, Kind, Anchor, Entry point? |
-| Consumed Interfaces | Library / Module, Interface used, Wrapped at, For |
 | Task → Location | To change…, Look in, Owner |
 | Invariants Registry | Invariant, Enforced / relied on at, Explained in, Status |
 | Commands | Need, Command, Verified |
+
+The **API & interface surface** (provided APIs / entry points, consumed interfaces,
+feature→API map) is authored in `API.md`, not in `INDEX.md`. INDEX points to it
+(single source of truth); a consuming skill that needs entry points reads `API.md`.
 
 ## Field rules
 

@@ -137,7 +137,7 @@ reference.
   `"dispatcher"`) via `argument_loader` (`cast.h`). ◐
 - **Calls into:** `get_internals()` (`detail/internals.h`) for bound-class lookup. ◐
 - **Related concept:** `handle` / `object` reference semantics (`pytypes.h`).
-- **Related flow:** `FLOWS.md → "Calling a bound C++ function from Python"`.
+- **Related flow:** `FLOWS.md → "Calling a Bound C++ Function from Python"`.
 
 ### Deviation Callout (for agent readers)
 

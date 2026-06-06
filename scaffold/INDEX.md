@@ -66,21 +66,12 @@ build a feature, write a design doc) — and humans who want the map
 |---|---|---|
 | _(name)_ | `path → Struct` (search `"…"`) | `CONCEPTS.md` → _(concept)_ |
 
-### Provided APIs / Entry Points
+### APIs, Entry Points & Interfaces
 
-The public surface and the doors to trace *from*. → Detail: `API.md`
-
-| API / Symbol | Kind | Anchor | Entry point? |
-|---|---|---|---|
-| _(name)_ | function / CLI / endpoint / macro | `path → Symbol` (search `"…"`) | yes → FLOWS "…" / no |
-
-### Consumed Interfaces
-
-Library and module interfaces this codebase depends on. → Detail: `API.md`
-
-| Library / Module | Interface used | Wrapped at | For |
-|---|---|---|---|
-| _(dependency / module)_ | _(the subset called)_ | `path → Symbol` | _(feature / subsystem)_ |
+The provided API surface (the doors to trace *from*), the consumed library/module
+interfaces, and the feature→API map are authored in **`API.md`**. They are not copied
+here — `API.md` is the single source of truth, so a skill tracing code reads it
+directly.
 
 ### Task → Location Map
 

@@ -50,25 +50,12 @@
 | `dict` | `src/dict.h` → `dict` | `CONCEPTS.md` → `dict` |
 | `redisObject` | `src/server.h` → `redisObject` | `CONCEPTS.md` → `redisObject` |
 
-### Provided APIs / Entry Points
+### APIs, Entry Points & Interfaces
 
-→ Detail: `API.md`
-
-| API / Symbol | Kind | Anchor | Entry point? |
-|---|---|---|---|
-| RESP command set | network protocol | `src/server.c` → `call` | yes → FLOWS "Life of a `GET`" |
-| Server `main()` | process entry | `src/server.c` → `main` | yes |
-| Module API (`RedisModule_*`) | C API | `src/redismodule.h` | yes (module devs) |
-
-### Consumed Interfaces
-
-→ Detail: `API.md`
-
-| Library / Module | Interface used | Wrapped at | For |
-|---|---|---|---|
-| jemalloc | `malloc`/`free` | `src/zmalloc.c` → `zmalloc` | all allocation |
-| epoll/kqueue | readiness poll | `src/ae.c` → `aeApiPoll` | the event loop |
-| Lua | embed + call | `src/eval.c` → `evalCommand` | `EVAL` scripting |
+The provided API surface (RESP commands, the module API), the consumed interfaces
+(jemalloc, the event-loop poller, Lua, …), and the feature→API map are authored in
+**`API.md`** — the single source of truth. Process/binary start points are in
+`OVERVIEW.md` → Entry Points.
 
 ### Task → Location Map
 

@@ -28,7 +28,9 @@ _(Phase 1 — 2-3 sentences. What problem does it solve? Who uses it?)_
 
 ## Entry Points
 
-Where does execution actually start?
+Where does the **process/binary** start? (The *callable* API surface and per-feature
+tracing entry points live in `API.md` → Provided API Surface — not duplicated here. For
+a library whose entry points are its API, leave this table empty and point to `API.md`.)
 
 | Entry | Path | Notes |
 |---|---|---|

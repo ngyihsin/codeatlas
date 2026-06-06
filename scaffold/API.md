@@ -18,8 +18,12 @@ library interfaces it depends on — a prime starting point for code tracing
 
 ## Provided API Surface (what this codebase exposes)
 
-The public surface this codebase offers its callers. `Entry point?` marks the ones a
-reader should trace *from*; link them to `FLOWS.md`.
+The public *callable* surface this codebase offers — functions, classes, commands,
+endpoints, the registration/config interface. `Entry point?` marks the ones a reader
+should trace *from*; link them to `FLOWS.md`. Keep **process/binary start points**
+(`main`, daemons, the CLI binary, the test runner) in `OVERVIEW.md` → Entry Points, not
+here — no row should appear in both. (For a library whose entry points *are* its API,
+point `OVERVIEW.md` here instead of duplicating.)
 
 | API / Symbol | Kind | Anchor | Stability | Entry point? | Purpose |
 |---|---|---|---|---|---|
@@ -30,30 +34,24 @@ reader should trace *from*; link them to `FLOWS.md`.
 > host exposes a registration/config interface; many codebases have a top-level
 > **entry-point macro or `main`** (e.g. a module-init macro, a command table).
 
-## Consumed Library Interfaces (what the codebase uses, and how)
+## Consumed Interfaces (libraries & internal modules)
 
-For each external dependency — and each major **internal module boundary** — record
-the *slice* of its interface the codebase actually uses and where that use is wrapped
-or adapted. This is the interface you must understand to follow a call out of this
-codebase.
+For each external dependency — and each major **internal module boundary** not already
+covered by a `CONCEPTS.md` entry — record the *slice* of its interface the codebase
+actually uses and where that use is wrapped or adapted. This is the interface you must
+understand to follow a call out of this codebase (or across a module boundary). Prefix
+internal-module rows with `internal:` to tell them from third-party libraries.
 
 | Library / Module | Interface used (the subset) | Wrapped / adapted at | Why / for what |
 |---|---|---|---|
-| _(dependency or internal module)_ | _(the functions/types/protocol actually called)_ | `path → Symbol` (the adapter/wrapper) | _(the feature or subsystem that needs it)_ |
+| _(dependency)_ | _(the functions/types/protocol actually called)_ | `path → Symbol` (the adapter/wrapper) | _(the feature or subsystem that needs it)_ |
+| internal: _(A → B)_ | _(what B promises A)_ | `path → Symbol` | _(direct call / callback / queue / IPC)_ |
 
-> Get the list of dependencies from the build config read in Phase 1
+> Get the dependency list from the build config read in Phase 1
 > (`package.json` / `Cargo.toml` / `CMakeLists.txt` / `go.mod` / `pyproject.toml`).
-> Do **not** list every transitive dependency — only the interfaces the code calls
-> directly, and the wrapper that adapts them.
-
-## Internal Module Interfaces (optional)
-
-The contracts between subsystems — the in-process "APIs" one module offers another.
-Often where bugs hide, and where a trace crosses a boundary.
-
-| Module boundary | Interface (the contract) | Anchor | Notes |
-|---|---|---|---|
-| _(A → B)_ | _(what B promises A)_ | `path → Symbol` | _(direct call / callback / queue / IPC)_ |
+> **Not exhaustive:** list only the interfaces the code calls directly and the wrapper
+> that adapts them — not every transitive dependency or internal boundary. If a
+> boundary already has a `CONCEPTS.md` entry, point to it instead of re-describing it.
 
 ## Feature → API Map (what APIs power what features)
 
