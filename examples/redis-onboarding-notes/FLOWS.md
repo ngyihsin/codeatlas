@@ -12,11 +12,17 @@
 **Before you begin:** read `CONCEPTS.md → dict` (the lookup step uses it)
 **Owner:** _(example instance — unowned)_
 **Trigger:** a client sends `GET <key>` over a TCP connection (RESP protocol)
-**Last verified against commit:** 4625b89 (redis unstable)   **Status:** ◐ Read-only
+**Last verified against commit:** 4625b89 (redis unstable)   **Status:** ✓ behavior run / ◐ call-chain read
 **Last verified date:** 2026-06-06
 
 > One canonical path, omitted aggressively (the "Life of a Pixel" lesson). The happy
 > path returns a string value; the required error branch is WRONGTYPE.
+>
+> **Verified by running (2026-06-06, @4625b89):** the observable behavior was confirmed
+> against a live server — `GET hello` → `world` (happy path ✓), `GET` of a hash key →
+> `WRONGTYPE Operation against a key holding the wrong kind of value` (error branch ✓,
+> exact literal), `GET` of a missing key → `(nil)` ✓. The individual call-chain steps
+> below remain `◐` (read, not stepped through in a debugger).
 
 ### In one line
 

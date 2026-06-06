@@ -5,10 +5,13 @@ template produces at the **L3 ("professional")** level. It documents a real
 codebase — [Redis](https://github.com/redis/redis) — so a new hire can see the bar,
 not just the blank templates.
 
-> **Read this caveat first.** Anchors were **verified against `redis/redis` @`4625b89`
-> (the `unstable` dev branch) on 2026-06-06**: every cited file and symbol was
-> confirmed present at the stated location. Behavioral claims (the mechanism behind a
-> flow, an invariant) were **read, not run**, so they stay tagged `◐` (read-only).
+> **Read this caveat first.** Verified against `redis/redis` @`4625b89` (the `unstable`
+> dev branch) on 2026-06-06. Two levels of verification: **anchors** — every cited file
+> and symbol confirmed present; and **behavior** — Redis was actually **built and run**,
+> confirming the HOW-TO build/run and the "Life of a GET" flow (happy path, the exact
+> `WRONGTYPE` error, and `nil` for a missing key) → those are now `✓`. Claims still read,
+> not run (call-chain steps, the shared-object invariant — which in fact *drifted* on the
+> 8.x `kvobj` line) stay `◐`.
 > Anchors use `file → symbol (search "…")`, never line numbers. Because `unstable` is
 > dev, a stable release may differ; the most notable drift is flagged inline (e.g.
 > keyspace lookups now return `kvobj*`, and `redisObject` lives in `src/object.h`).

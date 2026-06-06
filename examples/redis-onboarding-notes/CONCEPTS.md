@@ -142,10 +142,16 @@ a 24-bit `lru` field for eviction, a `refcount`, and a `void *ptr` to the payloa
 
 - **Why a box:** one uniform handle for many types and physical encodings, so the
   command core can pass values around without knowing their representation. ◐
-- **Invariant:** shared immutable objects (small integers in `shared.integers`,
-  `src/server.c`) have `refcount == OBJ_SHARED_REFCOUNT`; never mutate or free those.
-  ◐
-- **Related:** stored as the value of each `dictEntry` in the keyspace.
+- **Encoding (verified by running @4625b89):** `SET n 12345; OBJECT ENCODING n` → `int`;
+  a long string → `raw`. The `type`/`encoding` boxing is confirmed. ✓
+- **Invariant — version-sensitive:** shared immutable objects (small integers in
+  `shared.integers`, `src/server.c`) historically have `refcount == OBJ_SHARED_REFCOUNT`.
+  But **running @4625b89, `SET k 100; OBJECT REFCOUNT k` returned `1`, not the shared
+  sentinel** — in the 8.x `kvobj` refactor the value is embedded in the key entry, so a
+  keyspace string value is not the global shared object. The shared-object machinery
+  still exists (used elsewhere, e.g. replies); treat "keyspace small ints are shared"
+  as **not holding** on the 8.x line. ◐
+- **Related:** stored as the value of each key entry (`kvobj`) in the keyspace.
 
 ---
 

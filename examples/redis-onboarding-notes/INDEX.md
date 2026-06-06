@@ -73,7 +73,7 @@ The provided API surface (RESP commands, the module API), the consumed interface
 |---|---|---|---|
 | During a `dict` rehash, entries are in both tables; ops check both, inserts go to `ht[1]` | `src/dict.c` → `dictFind`, `dictAdd` | `CONCEPTS.md` → `dict` | ◐ |
 | Command logic runs single-threaded; no locks needed for keyspace access | `src/server.c` → `call` | `CLAUDE.md`, `OVERVIEW.md` | ◐ |
-| Shared/immutable objects (e.g. small ints) must never be mutated or freed | `src/object.c`, `src/server.c` → `shared` | `CONCEPTS.md` → `redisObject` | ◐ |
+| Shared/immutable objects (e.g. small ints) must never be mutated or freed — **but on the 8.x `kvobj` line keyspace values are not the shared object** (verified: `OBJECT REFCOUNT` of a small int = 1) | `src/object.c`, `src/server.c` → `shared` | `CONCEPTS.md` → `redisObject` | ◐ |
 | A read must call `expireIfNeeded`; an "expired" key may still be present | `src/db.c` → `lookupKeyReadWithFlags` | `FLOWS.md` notes | ◐ |
 | Commands reply via `addReply*`, never via C return values | `src/networking.c` | `CLAUDE.md` | ◐ |
 
@@ -81,9 +81,9 @@ The provided API surface (RESP commands, the module API), the consumed interface
 
 | Need | Command | Verified |
 |---|---|---|
-| Build | `make -j$(nproc)` | ◐ |
-| Run one test | `./runtest --single unit/type/string` | ◐ |
-| Run | `./src/redis-server --port 6379` | ◐ |
+| Build | `make -j$(nproc)` | ✓ |
+| Run one test | `./runtest --single unit/type/string` | ◐ (needs `tclsh`) |
+| Run | `./src/redis-server --port 6379` | ✓ |
 
 → Full procedures and failure strings: `HOW-TO.md`
 

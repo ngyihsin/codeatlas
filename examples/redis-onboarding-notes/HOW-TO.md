@@ -5,11 +5,11 @@
 **You are assumed to know:** a C toolchain and a Unix shell
 **Before you begin:** a clean checkout of `redis/redis`; `make` and a C compiler
 **Owner:** _(example instance — unowned)_
-**Last verified against commit:** 4625b89 (redis unstable)   **Status:** ◐ Read-only
+**Last verified against commit:** 4625b89 (redis unstable)   **Status:** ✓ build + run executed
+**Verified by running (2026-06-06):** `make -j` built `redis-server`/`redis-cli` (ending with the documented "run 'make test'" hint); the server started and answered `SET`/`GET`. Task 3 (`./runtest`) is **untested here** — `tclsh` was absent.
 
 > Procedural steps only. For *why* anything works this way, see `CONCEPTS.md`.
-> Commands below are standard for recent Redis; confirm on your checkout and promote
-> their status to `✓` the first time you run each.
+> Build and run were executed on 2026-06-06 (✓); the test runner needs `tclsh`.
 
 ## Prerequisites: One-Time Setup
 
