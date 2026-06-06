@@ -7,8 +7,10 @@
 **Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ◐ Read-only
 **Index schema:** v1 — column meanings stable within a major version
 
-> Illustrative reference instance. Anchors **verified against `pybind11` @`6079989`
-> (v3.1.0, 2026-06-06)**; rows stay `◐` because behavior was read, not run. Re-verify
+> Illustrative reference instance, **verified against `pybind11` @`6079989` (v3.1.0,
+> 2026-06-06)**: anchors confirmed present, and a real module was **built and run** —
+> `add(2,3)`→`5` and the TypeError branch reproduced (✓). Rows whose behavior was not
+> executed (e.g. the test-suite commands, `PYBIND11_TYPE_CASTER`) stay `◐`. Re-verify
 > before acting. To *build* these notes you would read `AGENT-warm-up.md`; this is the
 > *consume* entry.
 

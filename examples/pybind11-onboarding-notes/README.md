@@ -6,14 +6,15 @@ one for a **C++ + Python codebase built with CMake**:
 C systems codebase, this one shows a **polyglot library**: a header-only C++ side, a
 Python test/packaging side, and CMake glue tying them together.
 
-> **Read this caveat first.** Anchors were **verified against `pybind/pybind11`
-> @`6079989` (v3.1.0) on 2026-06-06**: every cited file and symbol was confirmed
-> present. Behavioral claims (a flow's mechanism, an invariant) were **read, not run**,
-> so they stay tagged `◐`. Anchors use `file → symbol (search "…")`, never line
-> numbers. Two things moved in the 3.x line and are corrected here: `PYBIND11_MODULE`
-> is defined in `detail/common.h` (not `pybind11.h`), and the smart-holder is the
-> default (`detail/struct_smart_holder.h`). Re-verify against *your* checkout's commit
-> before acting; this is the honesty discipline `STANDARD.md` requires.
+> **Read this caveat first.** Verified against `pybind/pybind11` @`6079989` (v3.1.0) on
+> 2026-06-06 at two levels: **anchors** — every cited file/symbol confirmed present; and
+> **behavior** — a real extension was **built with `pybind11_add_module` and run**
+> (`add(2,3)`→`5`, a bound `class_`, and the exact `incompatible function arguments`
+> TypeError) → those APIs are now `✓`. Read-but-not-run claims (the test-suite build,
+> `PYBIND11_TYPE_CASTER`, the call-chain internals) stay `◐`. Two 3.x drifts are
+> corrected here: `PYBIND11_MODULE` is in `detail/common.h` (not `pybind11.h`), and the
+> smart-holder is the default (`detail/struct_smart_holder.h`). Anchors use
+> `file → symbol`, never line numbers. Re-verify against *your* checkout before acting.
 
 ## What's here
 

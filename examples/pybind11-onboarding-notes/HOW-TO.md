@@ -6,10 +6,14 @@
 **Before you begin:** a clean checkout of `pybind/pybind11`; CMake ≥ 3.15; a C++11
 compiler; Python (with development headers) and `pytest`
 **Owner:** _(example instance — unowned)_
-**Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ◐ Read-only
+**Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ✓ build + import executed
+**Verified by running (2026-06-06):** Task 2 was executed — a consumer module built with
+`pybind11_add_module` and imported in Python 3.11; `example.add(2,3)` → `5`. Task 1 (full
+`-DPYBIND11_TEST=ON` suite) and Task 3 (`pytest`) were **not run here**; they stay `◐`.
 
 > Procedural steps only — for *why*, see `CONCEPTS.md`. This codebase is **CMake**, not
-> `make`. Confirm commands on your checkout; promote to `✓` once you run them.
+> `make`. Task 2 (build + import a module) is verified ✓; confirm the test-suite steps
+> on your checkout.
 
 ## Prerequisites: One-Time Setup
 

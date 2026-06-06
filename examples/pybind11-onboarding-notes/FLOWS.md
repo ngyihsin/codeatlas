@@ -13,12 +13,19 @@
 **Owner:** _(example instance — unowned)_
 **Trigger:** Python code calls a function that was bound with `m.def(...)`, e.g.
 `example.add(2, 3)`
-**Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ◐ Read-only
+**Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ✓ behavior run / ◐ call-chain read
 **Last verified date:** 2026-06-06
 
 > One canonical path — the single-overload success case — omitting the multi-overload
 > and keyword-argument details. The required error branch is the "no matching
 > overload" TypeError.
+>
+> **Verified by running (2026-06-06, @6079989):** built a real module and called it —
+> `example.add(2,3)` → `5` (happy path ✓), and `example.add("a",3)` → the exact
+> `TypeError: add(): incompatible function arguments. The following argument types are
+> supported:` (error branch ✓). The call-chain steps below stay `◐` (read, not stepped
+> in a debugger). *3.x nuance:* the generated arg type now shows as
+> `typing.SupportsInt | typing.SupportsIndex`, not plain `int`.
 
 ### In one line
 

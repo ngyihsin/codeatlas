@@ -5,8 +5,12 @@
 **You are assumed to know:** C++ and that Python objects are `PyObject*`
 **Before you begin:** read `OVERVIEW.md`
 **Owner:** _(example instance — unowned)_
-**Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ◐ Read-only
+**Last verified against commit:** 6079989 (pybind11 3.1.0)   **Status:** ✓ key APIs exercised / ◐ rest read
 **Last verified date:** 2026-06-06
+**Verified by running (2026-06-06):** `PYBIND11_MODULE`, `module_::def`, `class_`, and
+`pybind11_add_module` were exercised — a real module built and imported, function + class
+calls succeeded (✓). `PYBIND11_TYPE_CASTER` and the consumed/internal interfaces were
+read, not run (◐).
 
 > Illustrative reference instance. Anchors are `file → symbol`; re-verify before use.
 > pybind11 is unusual: its *provided* API is the binding DSL, and its single most
