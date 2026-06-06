@@ -2,10 +2,13 @@
 
 Concrete examples of how this template is used on real codebases. These are illustrative only. Do not copy them into your own notes; they belong here, not in your project's working files.
 
-> **Want a complete, filled example?** See `examples/redis-onboarding-notes/` at the
-> repository root — a full L3 reference instance for Redis (OVERVIEW, a data-structure
-> CONCEPT, a FLOW, HOW-TO, CLAUDE, and a consumer INDEX). The snippets below are
-> focused fragments; that directory is the whole set.
+> **Want a complete, filled example?** See the `examples/` directory at the repository
+> root — full L3 reference instances (OVERVIEW, a data-structure CONCEPT, a FLOW,
+> HOW-TO, CLAUDE, and a consumer INDEX):
+> - `examples/redis-onboarding-notes/` — Redis (C, `make`)
+> - `examples/pybind11-onboarding-notes/` — pybind11 (C++ + Python, **CMake**)
+>
+> The snippets below are focused fragments; those directories are the whole set.
 
 ## Example: Chromium Subsystems Tracker
 

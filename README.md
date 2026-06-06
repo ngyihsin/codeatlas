@@ -59,18 +59,22 @@ template/
     SESSION-LOG-TEMPLATE.md   # Format for each session log
 ```
 
-## A Worked Reference Instance
+## Worked Reference Instances
 
-The blank templates show the *structure*; `examples/redis-onboarding-notes/` shows
-the *bar*. It is a complete, filled set of notes for a real codebase (Redis) at the
-**L3 ("professional")** level — `OVERVIEW`, a data-structure `CONCEPTS` entry
-(incremental rehashing, with the *why* and a worked API call), a `FLOWS` trace
-("Life of a `GET`" with its error branch), a `HOW-TO`, a lean `CLAUDE.md`, and a
-consumer `INDEX.md` with an invariants registry and task recipes.
+The blank templates show the *structure*; the `examples/` directory shows the *bar* —
+complete, filled note sets for real codebases at the **L3 ("professional")** level.
+Each has an `OVERVIEW`, a data-structure `CONCEPTS` entry (with the *why* and a worked
+API call), a `FLOWS` trace (with its error branch), a `HOW-TO`, a lean `CLAUDE.md`,
+and a consumer `INDEX.md` with an invariants registry and task recipes.
 
-It is illustrative: authored from knowledge of Redis, so every claim is tagged `◐`
-and every anchor is `file → symbol` rather than a line number. Read it to see what
-"good" looks like before filling the templates on your own codebase.
+| Instance | Codebase | Stack | Shows |
+|---|---|---|---|
+| `examples/redis-onboarding-notes/` | Redis | C, `make` | A pure C systems codebase; incremental rehashing; "Life of a `GET`" |
+| `examples/pybind11-onboarding-notes/` | pybind11 | C++ + Python, **CMake** | A polyglot header-only library; type casters across the C++/Python boundary; the GIL and ABI invariants |
+
+Both are illustrative: authored from knowledge of each project, so every claim is
+tagged `◐` and every anchor is `file → symbol` rather than a line number. Read them to
+see what "good" looks like before filling the templates on your own codebase.
 
 ## How the Process Works
 
