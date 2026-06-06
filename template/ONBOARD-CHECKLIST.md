@@ -72,6 +72,7 @@ The notes directory is "professional" — never "finished" — when these all ho
 - [ ] At least one FLOWS.md flow is L3 (real action, end-to-end, rendered diagram, citable call-chain table, primary error branch)
 - [ ] At least three CONCEPTS.md entries are L3, including the single hardest concept and at least one **key data structure with a worked API example**
 - [ ] A common-tasks how-to exists and works on a clean checkout
+- [ ] INDEX.md exists; every row resolves to a real section; the invariants registry is filled
 - [ ] CLAUDE.md is ≤200 lines and names no concept/flow that does not exist in the detailed docs
 - [ ] Every code claim has a stable anchor (`file + symbol`) and a `✓ / ◐ / ?` tag
 - [ ] Every concept and flow entry records `Last verified against commit:`
@@ -82,3 +83,4 @@ The notes directory is "professional" — never "finished" — when these all ho
 - [ ] Continuity test passes (see `HANDOFF.md`) — proves transfer, not value
 - [ ] Cold-start quiz: a newcomer answers 5 pre-agreed questions using only the docs
 - [ ] Time-to-first-change: a new hire builds, runs, and lands a one-line change using only the how-to
+- [ ] Actionability: given only INDEX.md, a skill locates the code, names the invariant it must not break, and cites the flow for a sample issue — without re-exploring

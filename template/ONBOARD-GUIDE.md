@@ -352,15 +352,18 @@ This is the "Life of a Pixel" artifact — the single highest-value document for
 
 2. Verify line count: `wc -l CLAUDE.md`. If over 200, cut.
 
-3. Read CLAUDE.md aloud to yourself and ask: "Is every line earning its place in every future session's context window?" Cut anything that fails.
+3. **Build or refresh `INDEX.md`** — the entry point for consuming skills. Derive its tables from `CONCEPTS.md`, `FLOWS.md`, and `HOW-TO.md`: the concept/flow/data-structure map, the **task→location map**, the **invariants registry**, and the commands. Confirm every row points at a section that exists. This is what lets another skill fix a bug or write a design doc from the docs. See `STANDARD.md` → "The Docs as a Knowledge Base for Other Skills".
 
-4. **Run the gate in `STANDARD.md` → "Definition of Done for the Whole Notes Directory".** This is the moment to check the document set against the bar, not just CLAUDE.md against its line count. Walk the *Amateur Tells* list too. Fix what fails before declaring Phase 6 done.
+4. Read CLAUDE.md aloud to yourself and ask: "Is every line earning its place in every future session's context window?" Cut anything that fails.
 
-5. Update the HANDOFF.md state block: set `state: continuing`.
+5. **Run the gate in `STANDARD.md` → "Definition of Done for the Whole Notes Directory".** This is the moment to check the document set against the bar, not just CLAUDE.md against its line count. Walk the *Amateur Tells* list too. Fix what fails before declaring Phase 6 done.
+
+6. Update the HANDOFF.md state block: set `state: continuing`.
 
 ### Done Criteria
 
 - CLAUDE.md ≤200 lines (verified by `wc -l`)
+- INDEX.md built; every row points at a section that exists; invariants registry filled
 - Cross-links to OVERVIEW, CONCEPTS, FLOWS, OPEN-QUESTIONS
 - `STANDARD.md` "Definition of Done" gate walked; failing items fixed or logged
 - ONBOARD-CHECKLIST.md Phase 6 ticked
@@ -391,13 +394,19 @@ Run this phase periodically — every few weeks, or after the upstream codebase 
    - Has it been answered by recent commits, blog posts, or other docs?
    - If yes: move resolution into the relevant CONCEPTS.md or FLOWS.md entry, mark Q as resolved.
 
-4. Update the HANDOFF.md state block: set `last_verified_commit` to the current short hash.
+4. **Re-sync `INDEX.md`.** For every row, confirm the anchor still resolves and the
+   target section still exists. Update any status tag that changed in steps 1–3. A
+   stale index is dangerous: a consuming skill acts on it. Pay special attention to
+   the invariants registry — a removed or changed invariant must be corrected here.
+
+5. Update the HANDOFF.md state block: set `last_verified_commit` to the current short hash.
 
 ### Output
 
 - Updated commit hashes on verified entries
 - Drifted entries flagged
 - OPEN-QUESTIONS.md cleaned up
+- INDEX.md re-synced (anchors resolve, statuses current, invariants registry correct)
 - HANDOFF.md state block `last_verified_commit` updated
 
 ### Done Criteria

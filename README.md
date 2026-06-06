@@ -37,7 +37,8 @@ Both share the same architecture: a single warm-up entry point, phased progressi
 
 ```
 template/
-  AGENT-warm-up.md            # Agent reads this at the start of every session
+  AGENT-warm-up.md            # Authoring agent reads this at the start of every session
+  INDEX.md                    # Entry point for consuming skills: machine-readable map + invariants + task recipes
   STANDARD.md                 # What "good" looks like: the quality bar + exemplars (Linux, Chromium, Gecko, Servo)
   ONBOARD-GUIDE.md            # Step-by-step exploration phases (kept, not deleted)
   ONBOARD-CHECKLIST.md        # Tracks which phases / topics have been completed
@@ -111,6 +112,7 @@ If yes, your docs are honest. If no, something didn't get distilled.
 | Document | Role | When Filled |
 |---|---|---|
 | **STANDARD.md** | The quality bar: what "good" looks like, exemplars, maturity rubric | Read-only reference (not filled) |
+| **INDEX.md** | Entry point for consuming skills: machine-readable map, invariants registry, task recipes | Phase 6, refreshed with the docs |
 | **OVERVIEW.md** | What the project is, top-level structure | Phase 1-2 |
 | **CONCEPTS.md** | Core abstractions and embodying files | Phase 3-4, ongoing |
 | **FLOWS.md** | Concrete call chains | Phase 5, ongoing |
@@ -152,9 +154,13 @@ structures** of a subsystem — their fields, *why* they are shaped that way, an
 worked API example, because in a systems codebase the data structures *are* the
 architecture — and **writing for agent readers**, since these docs are re-read by
 future AI sessions that retrieve fragments, follow instructions literally, and need
-stable anchors instead of drift-prone line numbers. **Read it before Phase 1,
-re-read it before Phase 6, and check each doc against it as you draft.** The phases
-below are how you get there; the standard is how you know you arrived.
+stable anchors instead of drift-prone line numbers. It also treats the output as a
+**knowledge base other skills act on**: a digital colleague dispatched to fix a bug,
+build a feature, or write a design document reads `INDEX.md` — a machine-readable
+map with an invariants registry and task recipes — to ground its work in the real
+codebase and know what is safe to change. **Read it before Phase 1, re-read it
+before Phase 6, and check each doc against it as you draft.** The phases below are
+how you get there; the standard is how you know you arrived.
 
 ## Suggested Methodology
 

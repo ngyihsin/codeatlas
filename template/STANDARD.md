@@ -5,10 +5,13 @@
 > the end. The other files tell you the *process*; this file tells you what the
 > *output* must achieve to be worth keeping.
 >
-> Two readers use these docs: **humans** (new hires) and **agents** (future AI
-> sessions). Most rules serve both. Where they diverge, see "Writing for Agent
-> Readers" near the end. The goal is one document set good enough that either
-> reader becomes productive without re-deriving everything from raw source.
+> Three readers use these docs: **humans** (new hires), **authoring agents** (future
+> onboarding sessions), and **consuming skills** (digital colleagues that read the
+> docs to *do* a task — fix a bug, build a feature, write a design doc). Most rules
+> serve all three. Where agents differ, see "Writing for Agent Readers"; where
+> consuming skills differ, see "The Docs as a Knowledge Base for Other Skills." The
+> goal is one document set good enough that any of them becomes productive without
+> re-deriving everything from raw source.
 
 ## The Bar, in One Sentence
 
@@ -72,7 +75,7 @@ template, so "write good docs" becomes "fill these files to this standard."
 
 | # | Trait | What it means | Delivered by |
 |---|---|---|---|
-| 1 | **A routing entry point** | One "start here" file that sends each reader to the right place. | `AGENT-warm-up.md`, `README.md` |
+| 1 | **Routing entry points** | One "start here" for authors (`AGENT-warm-up.md`) and one for consuming skills (`INDEX.md`). Each reader is routed, not left to guess. | `AGENT-warm-up.md`, `INDEX.md` |
 | 2 | **Positioning + a real map** | What the project is in one sentence, and where things live — measured, not guessed. | `OVERVIEW.md` |
 | 3 | **The *why*, where recoverable** | Invariants, module boundaries, and — *if recoverable from history, comments, or design docs* — the rejected alternative. If not recoverable, say so and mark it `?`. Never fabricate a rationale. | `CONCEPTS.md` |
 | 4 | **At least one end-to-end flow** | One concrete user-visible action traced across every module and process it touches, including its primary error branch. | `FLOWS.md` |
@@ -185,6 +188,38 @@ versus self-contained chunks (good for agents). Resolve it by keeping the
 local context — its key term, its anchor, its status tag — to be used safely alone.
 Controlled redundancy of agent-critical facts is a deliberate exception to DRY.
 
+## The Docs as a Knowledge Base for Other Skills
+
+The output is not only read by people learning the code. Other skills — digital
+colleagues dispatched to **fix a bug, build a feature, or write a design document** —
+read it to ground their work in the real codebase and then **act on it**. Acting on
+docs raises the bar: a doc that is pleasant to read but cannot be safely used to
+change code has failed this reader.
+
+To serve consuming skills, the document set must provide:
+
+1. **One discoverable entry point: `INDEX.md`.** A machine-readable router a skill
+   reads first — concepts, flows, data structures, task→location, and commands as
+   parseable tables, each pointing at the detailed doc. `CLAUDE.md` is auto-loaded by
+   the harness and points to it.
+2. **Trust gates for action.** The `✓ / ◐ / ?` tags are not decoration; they decide
+   what a skill may do. Act on `✓`; re-verify `◐` against current code before
+   editing; **never act on `?`.**
+3. **An invariants registry.** The must-not-break rules, each with an anchor and the
+   concept that explains it. A change that violates an invariant is a bug even if the
+   tests pass. This is the single most valuable thing you can give a skill that edits
+   code.
+4. **Task recipes.** For each of fix / feature / design-doc: what to read, what to
+   extract, which guardrails to honor, and what to write back. (See `INDEX.md`.)
+5. **A write-back loop.** When a consuming skill changes the code or learns
+   something, it updates the cited doc and its provenance. A knowledge base only the
+   authors maintain drifts between sessions; consumers keep it true.
+
+The design-doc case is the bridge to `docforge`: these docs are **code →
+understanding**; a design doc is **design → code**. A design skill reads the
+concepts, flows, and invariants for the area it touches, cites them with anchors, and
+flags any invariant the design would change as a named migration risk.
+
 ## Definition of Done for the Whole Notes Directory
 
 The directory is "professional" — not "finished," this is never finished — when all
@@ -218,6 +253,9 @@ checks that they actually *work* on a reader. Both matter; outcomes matter more.
       "what protects the task list during a walk?").
 - [ ] **Time-to-first-change:** a new hire can build, run, and land a one-line
       change using only the how-to, without asking a human.
+- [ ] **Actionability (for consuming skills):** given only `INDEX.md`, a skill can,
+      for a sample issue, locate the code (`file + symbol`), name the invariant it
+      must not break, and cite the relevant flow — without re-exploring the source.
 
 ## Amateur Tells: How to Spot Documentation That Will Not Help Anyone
 
@@ -243,6 +281,9 @@ If your draft does any of these, it is below the bar. Fix it before committing.
   do not regenerate it.
 - **Too long.** Burying the answer or re-explaining derivable code is below the bar
   too — not only stubs. This is the most common failure of an AI author.
+- **Readable but not actionable.** A skill can understand the doc but cannot safely
+  change code from it — no invariants flagged, no anchors to act on, no trust tags.
+  Understanding is necessary; for a knowledge base it is not sufficient.
 
 ## How to Use This File
 

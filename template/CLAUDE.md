@@ -4,6 +4,8 @@
 > Check before commit: `wc -l template/CLAUDE.md`. If over 200, cut.
 >
 > If the AI can find something by reading another doc when needed, it does NOT belong here. This file is an **index**, not an encyclopedia.
+>
+> **Here to DO a task — fix a bug, build a feature, write a design doc — not to onboard?** Start at `INDEX.md`. It is the knowledge-base entry point for consuming skills: a machine-readable map, an invariants registry, and task recipes.
 
 ## Project in One Paragraph
 
@@ -67,6 +69,8 @@ These are the project-specific habits that affect every interaction:
 
 ## Pointers to Detailed Docs
 
+- **Knowledge-base entry for other skills** → `INDEX.md`
+- **Common tasks (build / run / test / change)** → `HOW-TO.md`
 - **Project structure** → `OVERVIEW.md`
 - **Core concepts (deep dives)** → `CONCEPTS.md`
 - **Important call chains** → `FLOWS.md`

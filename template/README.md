@@ -19,11 +19,16 @@ This is **not** the codebase itself. This is the **understanding** of the codeba
 
 That's it. Everything else is described inside `AGENT-warm-up.md`.
 
+**To instead use these docs to get work done** — a digital colleague fixing a bug,
+building a feature, or writing a design document — point the skill at `INDEX.md`.
+It routes to the right knowledge and defines what is safe to act on.
+
 ## Document Index
 
 | Document | Role |
 |---|---|
-| `AGENT-warm-up.md` | Single bootstrap file, read every session |
+| `AGENT-warm-up.md` | Single bootstrap file for the **authoring** agent, read every session |
+| `INDEX.md` | Entry point for **consuming** skills: machine-readable map, invariants registry, task recipes |
 | `STANDARD.md` | What "good" looks like: the quality bar, exemplars, and maturity rubric |
 | `ONBOARD-GUIDE.md` | Phase definitions and workflow |
 | `ONBOARD-CHECKLIST.md` | Phase / topic completion tracking |
