@@ -20,10 +20,17 @@ Flows are how abstract concepts (CONCEPTS.md) connect to concrete behavior. If a
 
 ## Flow: _<User-Visible Action>_
 
+**Doc type:** explanation (traced flow)
+**Audience:** _(who needs to follow this path; what they already know)_
+**Before you begin:** _(none, or prerequisite concepts / build)_
+**Owner:** _(who keeps this true)_
 **Trigger:** _(what starts this — a button click, a network packet, a timer fires, etc.)_
-**Last verified against commit:** _(short hash — required. Phase 7 cannot drift-check without it.)_
+**Last verified against commit:** _(short hash — required. Phase 7 cannot drift-check without it.)_   **Status:** ✓ / ◐ / ?
 **Last verified date:** _(YYYY-MM-DD)_
-**Overall status:** ◐ Read-only
+
+> Follow Chromium's "Life of a Pixel" lesson: **choose one canonical path and omit
+> aggressively.** Trace one action well; do not trace every branch. The one branch
+> you must include is the primary error path below.
 
 ### Sequence Diagram (Required)
 
@@ -67,6 +74,16 @@ The table is for grep, citation, and detail. The diagram above is for fast compr
 | 3 → 5 | Process: Browser → Renderer | Mojo IPC |
 
 These boundaries are usually where bugs hide. Flag them clearly.
+
+### Primary Error / Early-Exit Branch (required for L3)
+
+Where readers actually get stuck is the failure path, not the happy path. Document
+at least the main one.
+
+- **Where it diverges:** _(step number above, and the `file + symbol` of the branch)_
+- **What triggers it:** _(the condition — bad input, timeout, permission, etc.)_
+- **Literal error signal:** _(the exact error string / status / log line, so an agent reader can match it)_
+- **Where it ends up:** _(returned error, retry, user-visible message)_
 
 ### Open Questions Raised
 

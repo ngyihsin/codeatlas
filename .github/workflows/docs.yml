@@ -1,0 +1,24 @@
+name: docs
+
+# Keeps the framework honest: scripts parse, and every scaffold/example INDEX.md
+# Knowledge Map covers the concepts and flows authored in CONCEPTS.md / FLOWS.md.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scripts parse
+        run: bash -n framework/tools/*.sh
+
+      - name: INDEX covers all concepts and flows
+        run: |
+          set -e
+          for dir in scaffold examples/*-onboarding-notes; do
+            framework/tools/check-index.sh "$dir"
+          done

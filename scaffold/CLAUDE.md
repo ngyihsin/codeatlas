@@ -1,9 +1,11 @@
 # CLAUDE.md
 
 > **Lean** per-session bootstrap. Loaded into every conversation. **Target: ≤200 lines.**
-> Check before commit: `wc -l template/CLAUDE.md`. If over 200, cut.
+> Check before commit: `wc -l CLAUDE.md`. If over 200, cut.
 >
 > If the AI can find something by reading another doc when needed, it does NOT belong here. This file is an **index**, not an encyclopedia.
+>
+> **Here to DO a task — fix a bug, build a feature, write a design doc — not to onboard?** Start at `INDEX.md`. It is the knowledge-base entry point for consuming skills: a machine-readable map, an invariants registry, and task recipes.
 
 ## Project in One Paragraph
 
@@ -67,6 +69,9 @@ These are the project-specific habits that affect every interaction:
 
 ## Pointers to Detailed Docs
 
+- **Knowledge-base entry for other skills** → `INDEX.md`
+- **Common tasks (build / run / test / change)** → `HOW-TO.md`
+- **APIs, entry points, library interfaces** → `API.md`
 - **Project structure** → `OVERVIEW.md`
 - **Core concepts (deep dives)** → `CONCEPTS.md`
 - **Important call chains** → `FLOWS.md`
@@ -77,14 +82,15 @@ These are the project-specific habits that affect every interaction:
 
 ## Behavioral Reminders for the Agent
 
-The canonical rules live in `AGENT-warm-up.md` → "Behavioral Rules". A four-line summary for in-session reference:
+The canonical rules live in the framework: `AGENT-PROTOCOL.md` (in an instance,
+`.docforge/framework/AGENT-PROTOCOL.md`). A four-line summary for in-session reference:
 
 1. **Code is truth.** When code and docs disagree, the code wins.
 2. **Tag every claim.** ✓ Verified / ◐ Read-only / ? Speculation. Same rule for diagrams as for prose.
-3. **Cite `file:line` for every code claim.** Untagged, uncited claims rot first.
-4. **Don't bloat this file.** Before adding anything to CLAUDE.md, ask: does every future session need this in its first 200 lines?
+3. **Cite a stable `file → symbol` anchor for every code claim.** Untagged, uncited claims rot first.
+4. **Respect file roles.** This file is curated by hand; `INDEX.md` is authored and its coverage is checked by `tools/check-index.sh`. Don't bloat this file — it changes rarely.
 
-For the full rules (including "do not capture secrets", diagram rendering, writing-style requirements), see `AGENT-warm-up.md`.
+For the full rules (secrets, diagram rendering, writing-style, file roles), see `AGENT-PROTOCOL.md`.
 
 ---
 

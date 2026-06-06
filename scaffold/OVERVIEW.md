@@ -2,7 +2,12 @@
 
 > Filled in **Phase 1** (one-sentence positioning, problem, stack, entry points) and **Phase 2** (structural map). Revised whenever Phase 7 catches drift.
 
-**Last verified against commit:** _(short hash, filled in at Phase 1 completion and at each Phase 7 re-verification)_
+**Doc type:** reference (map + positioning)
+**Audience:** anyone new to this codebase — human or agent
+**You are assumed to know:** _(the language(s); nothing project-specific)_
+**Before you begin:** none — this doc is the starting point
+**Owner:** _(who keeps this true)_
+**Last verified against commit:** _(short hash, filled in at Phase 1 completion and at each Phase 7 re-verification)_   **Status:** ✓ / ◐ / ?
 **Last verified date:** _(YYYY-MM-DD)_
 
 ## One-Sentence Positioning
@@ -23,7 +28,9 @@ _(Phase 1 — 2-3 sentences. What problem does it solve? Who uses it?)_
 
 ## Entry Points
 
-Where does execution actually start?
+Where does the **process/binary** start? (The *callable* API surface and per-feature
+tracing entry points live in `API.md` → Provided API Surface — not duplicated here. For
+a library whose entry points are its API, leave this table empty and point to `API.md`.)
 
 | Entry | Path | Notes |
 |---|---|---|

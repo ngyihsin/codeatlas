@@ -4,6 +4,8 @@ This file describes the phases for systematically understanding the target codeb
 
 The agent reads this file when starting first-time onboarding. After Phase 1 is checked off in `ONBOARD-CHECKLIST.md`, future sessions consult this guide only when re-running a phase.
 
+**This guide is the *process*. `STANDARD.md` is the *target*.** Read `STANDARD.md` first: it defines what professional documentation for a large codebase looks like, using Linux kernel, Chromium, Gecko, and Servo as exemplars, and gives a maturity rubric (L0–L3) to grade your output. Every phase below exists to move one document toward L3.
+
 ## Core Principles
 
 Before diving into phases:
@@ -118,9 +120,29 @@ src/
   ...
 ```
 
+### Side Deliverable: Draft HOW-TO.md
+
+Once the build system and entry points are known (Phase 1) and the structure is mapped (Phase 2), draft `HOW-TO.md` — the common first-week tasks (build, run, one test, land a one-line change). This is a **how-to** doc: procedural steps only, no *why*. Draft the commands now; mark its status `◐` and verify each command `✓` the first time you actually run it on a clean checkout. A how-to that has not been run is not yet trustworthy. See `STANDARD.md` → Trait 9.
+
+### Side Deliverable: Draft API.md (provided + consumed surface)
+
+While mapping structure, capture the **interface surface** in `API.md`:
+
+- The **provided API surface** — the public functions/classes/headers, CLI commands,
+  endpoints, or entry-point macros this codebase exposes. Mark the ones that are good
+  **entry points** for tracing.
+- The **consumed library interfaces** — from the dependency list in the build config
+  (Phase 1), the slice of each library the code calls directly and the wrapper that
+  adapts it.
+
+The **feature → API map** is filled in later, as flows are traced (Phase 5). See
+`STANDARD.md` → "Documenting APIs and Interfaces".
+
 ### Done Criteria
 
 - OVERVIEW.md has the structural map
+- HOW-TO.md drafted (commands may still be `◐` until first run)
+- API.md drafted: provided entry points + consumed library interfaces
 - ONBOARD-CHECKLIST.md Phase 2 ticked
 - HANDOFF.md updated with "next: Phase 3 (Reverse Recommendation)"
 
@@ -216,6 +238,16 @@ Replace the placeholder from Phase 3 with:
 - See OPEN-QUESTIONS.md Q5
 ```
 
+### Quality Bar
+
+The entry is done when it matches `STANDARD.md` → "What L3 looks like → CONCEPTS.md" and, for a central subsystem, "Documenting a Major Subsystem":
+
+- Opens with the standard header (type, audience, prerequisites, owner, verified commit).
+- Leads with a concrete example, then the contract.
+- For a load-bearing subsystem, documents the **key data structure** (fields, invariants, lifetime), explains **why it is shaped that way**, and shows a **worked API call**. An entry for a central subsystem missing the data structure or a usage example caps at L2.
+- Uses **stable anchors** (`file + symbol + search-string`), not bare line numbers — an agent reader acts on a stale `:LINE` literally.
+- States **what the reader would misunderstand without this concept**, including any place the project deviates from the common pattern an agent would assume.
+
 ### Done Criteria
 
 - CONCEPTS.md entry is detailed and tagged
@@ -287,12 +319,17 @@ sequenceDiagram
 - Step 8 onward: ? Speculation, see OPEN-QUESTIONS Q9
 ```
 
+### Quality Bar
+
+This is the "Life of a Pixel" artifact — the single highest-value document for a large codebase (see `STANDARD.md`). Follow Chromium's real lesson: **choose one canonical path and omit aggressively** — do not trace everything. The flow is done when a reader could **set a breakpoint at any step from the citation alone**, knows which steps cross a process or thread boundary, can tell IPC from a direct call, and can see the **primary error / early-exit branch** (where readers actually get stuck). That is the L3 bar for FLOWS.md.
+
 ### Done Criteria
 
 - FLOWS.md has at least one full flow
 - Mermaid sequence diagram present and rendered
 - Tagged for verification
 - Verification commit hash recorded
+- API.md "Feature → API map" gains a row for this flow: the feature, its entry-point API, the consumed interfaces it uses, and a link back to this flow
 - ONBOARD-CHECKLIST.md Phase 5 ticked
 - HANDOFF.md updated
 
@@ -331,14 +368,20 @@ sequenceDiagram
 
 2. Verify line count: `wc -l CLAUDE.md`. If over 200, cut.
 
-3. Read CLAUDE.md aloud to yourself and ask: "Is every line earning its place in every future session's context window?" Cut anything that fails.
+3. **Author or refresh `INDEX.md`** — the entry point for consuming skills. Write its tables from `CONCEPTS.md`, `FLOWS.md`, and `HOW-TO.md`: the concept/flow/data-structure map, the **task→location map**, the **invariants registry**, and the commands. Confirm every row points at a section that exists, then run `tools/check-index.sh` to verify it covers every concept and flow. This is what lets another skill fix a bug or write a design doc from the docs. See `STANDARD.md` → "The Docs as a Knowledge Base for Other Skills".
 
-4. Update the HANDOFF.md state block: set `state: continuing`.
+4. Read CLAUDE.md aloud to yourself and ask: "Is every line earning its place in every future session's context window?" Cut anything that fails.
+
+5. **Run the gate in `STANDARD.md` → "Definition of Done for the Whole Notes Directory".** This is the moment to check the document set against the bar, not just CLAUDE.md against its line count. Walk the *Amateur Tells* list too. Fix what fails before declaring Phase 6 done.
+
+6. Update the HANDOFF.md state block: set `state: continuing`.
 
 ### Done Criteria
 
 - CLAUDE.md ≤200 lines (verified by `wc -l`)
+- INDEX.md built; every row points at a section that exists; invariants registry filled
 - Cross-links to OVERVIEW, CONCEPTS, FLOWS, OPEN-QUESTIONS
+- `STANDARD.md` "Definition of Done" gate walked; failing items fixed or logged
 - ONBOARD-CHECKLIST.md Phase 6 ticked
 - ONBOARD-GUIDE.md NOT deleted (unlike docforge's INIT-GUIDE)
 - HANDOFF.md state block shows `state: continuing`
@@ -352,6 +395,8 @@ sequenceDiagram
 Run this phase periodically — every few weeks, or after the upstream codebase has had significant commits.
 
 ### Steps
+
+0. **Run the drift check first.** `tools/check-doc-drift.sh` (see `tools/README.md`) lists which notes cite code paths that changed since the last verification. This narrows the manual work below to exactly the entries at risk. In CI, this runs on every pull request that touches the codebase.
 
 1. For each file path referenced in CONCEPTS.md and FLOWS.md:
    - Read the "Last verified against commit: <hash>" annotation. If the annotation is missing, the entry was not properly recorded in Phase 4 or 5 — flag it.
@@ -367,13 +412,19 @@ Run this phase periodically — every few weeks, or after the upstream codebase 
    - Has it been answered by recent commits, blog posts, or other docs?
    - If yes: move resolution into the relevant CONCEPTS.md or FLOWS.md entry, mark Q as resolved.
 
-4. Update the HANDOFF.md state block: set `last_verified_commit` to the current short hash.
+4. **Re-sync `INDEX.md`.** For every row, confirm the anchor still resolves and the
+   target section still exists. Update any status tag that changed in steps 1–3. A
+   stale index is dangerous: a consuming skill acts on it. Pay special attention to
+   the invariants registry — a removed or changed invariant must be corrected here.
+
+5. Update the HANDOFF.md state block: set `last_verified_commit` to the current short hash.
 
 ### Output
 
 - Updated commit hashes on verified entries
 - Drifted entries flagged
 - OPEN-QUESTIONS.md cleaned up
+- INDEX.md re-synced (anchors resolve, statuses current, invariants registry correct)
 - HANDOFF.md state block `last_verified_commit` updated
 
 ### Done Criteria

@@ -4,6 +4,7 @@ phase1_complete: false
 last_session: 0
 last_session_date: —
 last_verified_commit: —
+template_version: 0.1.0
 -->
 
 # Handoff
@@ -23,6 +24,7 @@ The HTML comment at the top of this file is the **authoritative session-state si
 - `last_session` — integer, increments each session
 - `last_session_date` — `YYYY-MM-DD`
 - `last_verified_commit` — short hash of the codebase commit at last Phase 7 verification, or `—`
+- `template_version` — the framework version this instance is pinned to (see `framework/VERSION` / `CHANGELOG.md`). Bump it only when you run `update-framework.sh` and complete the migration notes.
 
 Update the block at the end of every session. Do not delete it.
 
