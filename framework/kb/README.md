@@ -87,12 +87,12 @@ python -m kb.l2 build  <out_dir> <codebase> <l2_dir> --backend claude   # genera
 python -m kb.lint      summaries.jsonl --code <codebase> --symbols <out_dir>/symbols.jsonl
 KB_DIR=<out_dir> python -m kb.mcp_server        # then speak MCP JSON-RPC on stdin
 python -m kb.l2 build  <out_dir> <codebase> <l2_dir> --backend claude --granularity symbol
-python -m pytest -q                             # 18 tests
+python -m pytest -q                             # 45 tests
 ```
 
 ## Verification (production-quality gate)
 
-- **`pytest`: 16/16 pass** (ops extraction, pagerank distribution, lint good/bad, hash
+- **`pytest`: 45/45 pass** (ops extraction, pagerank distribution, lint good/bad, hash
   stability, firewall cascade, MCP tools, unknown-tool error, L2 generate / self-repair /
   quarantine / incremental-skip, **end-to-end generator→MCP wiring + L1-only fallback**). L2
   tests use a deterministic `MockBackend` — CI never spawns an agent or hits the network.

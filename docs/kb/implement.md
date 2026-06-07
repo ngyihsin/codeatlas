@@ -133,7 +133,7 @@ claim.*
 - **Exit:** a paginated `find_symbol` over a large result set stays within the row budget per
   page; HTTP transport answers `initialize`/`tools/call`.
 
-### M3.3 — Drift sampler & freshness SLO (FR-8) · S
+### M3.3 — Drift sampler & freshness SLO (FR-8) · S · ✅ DONE
 - Periodic random re-derivation + diff vs cache to catch silent staleness; emit a freshness
   metric. **Exit:** sampler flags an intentionally-stale node in a test.
 

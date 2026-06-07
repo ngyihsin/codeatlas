@@ -11,6 +11,7 @@ from kb import l1, lint, incremental, l2, retrieve          # noqa: E402
 from kb import eval as kbeval                               # noqa: E402
 from kb import review                                       # noqa: E402
 from kb import scip_ingest                                  # noqa: E402
+from kb import drift                                        # noqa: E402
 from kb import recipes as kbrecipes                         # noqa: E402
 from kb.mcp_server import KB, handle, BUDGET, serve_http    # noqa: E402
 
@@ -97,6 +98,27 @@ def test_firewall_stops_cascade():
     assert incremental.compute_dirty({"c"}, edges, fold_changed={"c"}) == {"b", "c"}
     # full cascade when every fold changes
     assert incremental.compute_dirty({"c"}, edges, fold_changed={"a", "b", "c"}) == {"a", "b", "c"}
+
+
+# ------------------------------------------------------------ M3.3 drift sampler
+@pytest.mark.skipif(not HAS_CTAGS, reason="universal-ctags not installed")
+def test_drift_fresh_then_detects_staleness(tmp_path):
+    kbdir = tmp_path / "kb"
+    l1.build(FIX, str(kbdir))
+    clean = drift.sample_drift(str(kbdir), FIX)
+    assert clean["fresh_rate"] == 1.0 and clean["stale"] == []
+    # simulate a missed rebuild: corrupt one cached hash -> drift must flag it stale
+    cache = json.loads(open(kbdir / "l1_cache.json").read())
+    a_file = next(iter(cache["file_hashes"]))
+    cache["file_hashes"][a_file] = "deadbeef"
+    open(kbdir / "l1_cache.json", "w").write(json.dumps(cache))
+    drifted = drift.sample_drift(str(kbdir), FIX)
+    assert a_file in drifted["stale"] and drifted["fresh_rate"] < 1.0
+
+
+def test_drift_no_cache_is_graceful(tmp_path):
+    (tmp_path / "kb").mkdir()
+    assert "error" in drift.sample_drift(str(tmp_path / "kb"), str(tmp_path))
 
 
 # ---------------------------------------------------- M3.1 recipe semantic search

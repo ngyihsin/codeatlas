@@ -106,7 +106,7 @@ Gaps: **G9, G10, freshness SLO**.
 - [x] M3.1 paraphrase retrieves the right recipe ✅ (vector search; 'introduce a new kernel'→add-an-op, 'wrong fp16'→fix-a-dispatch-bug)
 - [x] M3.2 pagination ✅ (find_symbol(Compute): total=897, returned=25, nextCursor; HTTP transport round-trip; resources/list)
 - [x] M3.2 silent-truncation bug fixed ✅ (results carry total + nextCursor)
-- [ ] M3.3 drift sampler flags an intentionally-stale node
+- [x] M3.3 drift sampler flags an intentionally-stale node ✅ (real ORT: edit clip.cc -> stale=1, fresh_rate 0.997)
 
 ---
 
