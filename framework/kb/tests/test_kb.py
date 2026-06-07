@@ -241,6 +241,36 @@ def test_review_promote_ladder_and_rules():
         review.promote(sums, "missing", "reviewed", owner="x")
 
 
+def test_review_promote_rejects_skipping_rungs():
+    # the ladder is sequential: a draft cannot jump straight to battle-tested, even
+    # with a ticket -- it must pass through reviewed (human accuracy check) first.
+    sums = [{"id": "a.cc::F", "confidence": "draft"}]
+    with pytest.raises(ValueError):
+        review.promote(sums, "a.cc::F", "battle-tested", owner="x", ticket="JIRA-1")
+    assert sums[0]["confidence"] == "draft"          # unchanged
+    review.promote(sums, "a.cc::F", "reviewed", owner="x")   # one rung up is fine
+    assert sums[0]["confidence"] == "reviewed"
+
+
+def test_scip_innermost_caller_for_nested_scopes():
+    # a call inside a method is enclosed by BOTH the class def and the method def; the
+    # precise edge must be credited to the innermost scope (the method), not the class.
+    index = {"documents": [{
+        "relativePath": "m.cc", "symbols": [],
+        "occurrences": [
+            {"symbol": "cxx C#", "symbolRoles": 1,
+             "range": [0, 6, 7], "enclosingRange": [0, 0, 10, 1]},      # class, lines 0-10
+            {"symbol": "cxx C#foo().", "symbolRoles": 1,
+             "range": [2, 6, 9], "enclosingRange": [2, 2, 5, 3]},       # method, lines 2-5
+            {"symbol": "cxx bar().", "symbolRoles": 0, "range": [3, 4, 7]},  # call at line 3
+        ],
+    }]}
+    _, edges = scip_ingest.parse_index(index)
+    assert len(edges) == 1
+    assert edges[0]["caller_id"] == "cxx C#foo()."   # the method, not "cxx C#"
+    assert edges[0]["callee_id"] == "cxx bar()."
+
+
 def test_review_evidence_anchors_and_listing():
     sums = [{"id": "a.cc::F", "fold": "f", "full": "y [L3] and [L7-9]", "path": "a.cc",
              "confidence": "draft", "scope": "symbol"},

@@ -272,7 +272,9 @@ def generate_summary(prompt: str, *, backend: Backend, ident: str, path: str | N
     checked for entailment against its cited lines (kb.eval); unsupported claims are fed
     back so only claims actually supported by their citations ship. Raises entailment by
     construction at the cost of extra LLM calls."""
-    p, last, errs = prompt, {}, ["no attempt made"]
+    # seed identity so a quarantine record is traceable even if no attempt ever parses
+    last = {"id": ident} if path is None else {"id": ident, "path": path}
+    p, errs = prompt, ["no attempt made"]
     for n in range(1, attempts + 1):
         raw = backend.generate(p, system=_SYSTEM)
         try:

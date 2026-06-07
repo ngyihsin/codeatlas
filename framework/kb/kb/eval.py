@@ -191,8 +191,8 @@ def main(argv: list[str]) -> int:
         rep.pop("per_summary", None)  # keep stdout compact; full detail via API
         print(json.dumps(rep)); return 0
     if a.subcmd == "coverage":
-        sums = [json.loads(l) for l in open(a.summaries) if l.strip()]
-        syms = [json.loads(l) for l in open(a.symbols) if l.strip()]
+        sums = [json.loads(l) for l in open(a.summaries, encoding="utf-8") if l.strip()]
+        syms = [json.loads(l) for l in open(a.symbols, encoding="utf-8") if l.strip()]
         print(json.dumps(coverage(sums, syms))); return 0
     return 2
 

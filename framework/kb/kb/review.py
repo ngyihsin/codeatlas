@@ -53,6 +53,11 @@ def promote(summaries: list[dict], sid: str, to: str, owner: str,
         raise ValueError("promotion requires --owner")
     for s in summaries:
         if s.get("id") == sid:
+            cur = s.get("confidence", "draft")
+            if cur not in LADDER or LADDER.index(to) != LADDER.index(cur) + 1:
+                raise ValueError(
+                    f"promotion must climb one rung at a time along {LADDER}; "
+                    f"{cur!r} -> {to!r} is not allowed")
             s["confidence"] = to
             s["owner"] = owner
             s["reviewed_at"] = today or datetime.date.today().isoformat()

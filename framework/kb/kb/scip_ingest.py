@@ -69,14 +69,18 @@ def parse_index(index: dict) -> tuple[list[dict], list[dict]]:
 
     edges, seen = [], set()
     for path, callee, line in refs:
+        best = None  # innermost enclosing def: the smallest range containing the ref line
         for caller, lo, hi in defs_by_path.get(path, ()):
             if lo <= line <= hi and caller != callee:
-                key = (caller, callee)
-                if key not in seen:
-                    seen.add(key)
-                    edges.append({"caller_id": caller, "callee_id": callee,
-                                  "method": "scip-clang", "xref": "precise"})
-                break
+                if best is None or (hi - lo) < (best[2] - best[1]):
+                    best = (caller, lo, hi)
+        if best is None:
+            continue
+        key = (best[0], callee)
+        if key not in seen:
+            seen.add(key)
+            edges.append({"caller_id": best[0], "callee_id": callee,
+                          "method": "scip-clang", "xref": "precise"})
     edges.sort(key=lambda e: (e["caller_id"], e["callee_id"]))
     return symbols, edges
 
