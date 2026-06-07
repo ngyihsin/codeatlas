@@ -46,7 +46,7 @@ on token cost + freshness, not human readability.
 | L1 op matcher → `ops.jsonl` | ✅ (real ORT: 378 ops/123 distinct) | `kb/l1.py`, `registration_patterns.yaml` |
 | L1 symbols / call graph / PageRank / churn / module_map | ✅ (call graph `xref:partial`) | `kb/l1.py` |
 | L2 evidence lint | ✅ | `kb/lint.py` |
-| L2 LLM summary runner (fold/preview/full) | ◐ lint+schema done; runner pending (LLM) | spec appendix A prompt |
+| L2 LLM summary runner (fold/preview/full) | ✅ spawns an AI agent per node; lint self-repair loop; real ORT run | `kb/l2.py` |
 | Incremental hash + fold firewall | ✅ | `kb/incremental.py` |
 | MCP retrieval server (token-budgeted) | ✅ | `kb/mcp_server.py` |
 | L3 recipe/decision-tree + `find_recipe` | ◐ schema + stub | `fixtures/recipes/`, `kb/mcp_server.py` |
@@ -55,4 +55,5 @@ on token cost + freshness, not human readability.
 **Reconciliation:** spec writes `.codeatlas/`; framework uses `.docforge/` (same cache). Spec
 prefers tree-sitter+clangd for L1; the prototype uses ctags + macro matcher + heuristic call
 graph (tagged `xref:partial`, the spec's allowed fallback) — clangd/tree-sitter are the
-accuracy upgrade. Verified via `framework/kb` pytest (9/9) + a real ONNX Runtime run.
+accuracy upgrade. Verified via `framework/kb` pytest (14/14) + real ONNX Runtime runs of both
+the L1 op matcher and the L2 generator (Claude Code spawned per node, lint-clean drafts).

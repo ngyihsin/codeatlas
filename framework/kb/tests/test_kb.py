@@ -1,4 +1,5 @@
 """Tests for the kb pipeline. Run: cd framework/kb && python -m pytest -q"""
+import json
 import os
 import shutil
 import sys
@@ -6,7 +7,7 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from kb import l1, lint, incremental                       # noqa: E402
+from kb import l1, lint, incremental, l2                    # noqa: E402
 from kb.mcp_server import KB, handle                        # noqa: E402
 
 FIX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "mini-runtime")
@@ -116,3 +117,82 @@ def test_mcp_unknown_tool_errors():
     r = handle({"jsonrpc": "2.0", "id": 9, "method": "tools/call",
                 "params": {"name": "drop_table", "arguments": {}}}, kb)
     assert r["error"]["code"] == -32601
+
+
+# ---------------------------------------------------------------- L2 generator
+# Deterministic backends: no subprocess, no network. They stand in for the agent.
+def _clean_reply(prompt, attempt):
+    # a leaf prompt shows numbered source starting at "   1|"; cite L1 (always valid)
+    return '{"fold":"src file","preview":"a file","full":"does things [L1]",' \
+           '"evidence_level":"code"}'
+
+
+def test_l2_generates_clean_summary(tmp_path):
+    code = tmp_path / "code"; code.mkdir()
+    (code / "a.cc").write_text("int main() { return 0; }\n")
+    out = tmp_path / "l2"
+    report = l2.build(str(tmp_path), str(code), str(out),
+                      backend=l2.MockBackend(_clean_reply))
+    assert report["generated"] >= 1 and report["quarantined"] == 0
+    lines = [json.loads(l) for l in open(out / "summaries.jsonl")]
+    leaf = [s for s in lines if s.get("path") == "a.cc"][0]
+    assert leaf["confidence"] == "draft"          # never auto-trusted
+    assert lint.lint_summary(leaf, source_lines=1) == []   # what landed is lint-clean
+
+
+def test_l2_self_repairs_a_bluff(tmp_path):
+    # first reply bluffs (fold too long + out-of-range cite); second is clean.
+    replies = ['{"fold":"way too long a fold here","preview":"p",'
+               '"full":"x [L999]","evidence_level":"code"}',
+               '{"fold":"ok","preview":"p","full":"y [L1]","evidence_level":"code"}']
+    seen = {}
+
+    def responder(prompt, attempt):
+        # key by leaf vs module so each node gets its own 2-step sequence
+        node = "leaf" if "Summarize this source file" in prompt else "mod"
+        i = seen.get(node, 0); seen[node] = i + 1
+        return replies[min(i, len(replies) - 1)]
+
+    code = tmp_path / "code"; code.mkdir()
+    (code / "a.cc").write_text("int x;\n")
+    out = tmp_path / "l2"
+    report = l2.build(str(tmp_path), str(code), str(out),
+                      backend=l2.MockBackend(responder), attempts=3)
+    assert report["quarantined"] == 0           # the bluff was repaired, not shipped
+    leaf = [json.loads(l) for l in open(out / "summaries.jsonl")
+            if '"a.cc"' in l][0]
+    assert leaf["fold"] == "ok" and "[L1]" in leaf["full"]
+
+
+def test_l2_quarantines_incorrigible_bluff(tmp_path):
+    # always bluffs -> never passes lint -> quarantined, never in summaries.jsonl
+    bluff = lambda p, a: '{"fold":"x","preview":"p","full":"no cite here",' \
+                         '"evidence_level":"code"}'
+    code = tmp_path / "code"; code.mkdir()
+    (code / "a.cc").write_text("int x;\n")
+    out = tmp_path / "l2"
+    report = l2.build(str(tmp_path), str(code), str(out),
+                      backend=l2.MockBackend(bluff), attempts=2)
+    assert report["quarantined"] >= 1
+    q = [json.loads(l) for l in open(out / "quarantine.jsonl")]
+    assert any("no [Lxx]" in " ".join(s["_errors"]) for s in q)
+    leaf_clean = [l for l in open(out / "summaries.jsonl") if '"a.cc"' in l]
+    assert leaf_clean == []                     # the bluff never reached the trusted set
+
+
+def test_l2_incremental_skips_unchanged(tmp_path):
+    code = tmp_path / "code"; code.mkdir()
+    (code / "a.cc").write_text("int x;\n")
+    out = tmp_path / "l2"
+    b1 = l2.MockBackend(_clean_reply)
+    r1 = l2.build(str(tmp_path), str(code), str(out), backend=b1)
+    assert r1["generated"] >= 1
+    # second run, nothing changed -> all cached, zero new generations
+    b2 = l2.MockBackend(_clean_reply)
+    r2 = l2.build(str(tmp_path), str(code), str(out), backend=b2)
+    assert r2["generated"] == 0 and r2["cached"] >= 1 and b2.calls == 0
+
+
+def test_l2_parse_summary_tolerates_fences():
+    s = l2.parse_summary('```json\n{"fold":"a","x":1}\n```')
+    assert s["fold"] == "a" and s["x"] == 1

@@ -15,9 +15,35 @@ It is an **ETL pipeline, not a doc set** — judged on token cost + freshness.
 | **L1 op registry → `ops.jsonl`** (the spec's #1 artifact) | `kb/l1.py` | `python -m kb.l1 build <code> <out>` | ✅ verified on real ONNX Runtime (378 ops / 123 distinct, 7 macros) |
 | L1 symbols / call graph / importance / churn | `kb/l1.py` | same | ✅ `symbols.jsonl`, `edges.jsonl` (xref:partial), `module_map.md` |
 | **L2 evidence lint** (make bluffing impossible) | `kb/lint.py` | `python -m kb.lint <summaries> --code <root>` | ✅ rejects fold>20, code-claim-without-`[Lxx]`, out-of-range refs |
+| **L2 summary generator** (spawns an AI agent per node) | `kb/l2.py` | `python -m kb.l2 build <l1_dir> <code> <out> --backend claude` | ✅ real run over ONNX Runtime; lint runs as a self-repair loop; un-fixable bluffs quarantined |
 | **Incremental hash + fold firewall** | `kb/incremental.py` | `python -m kb.incremental demo` | ✅ recompute only the dirty sub-tree; cascade stops at stable folds |
 | **MCP retrieval server** (token-budgeted) | `kb/mcp_server.py` | `KB_DIR=<out> python -m kb.mcp_server` | ✅ `find_symbol`/`trace_callers`/`find_recipe`/`get_recipe_steps`/`what_changed`/`review_status` |
 | **L3 recipe / decision-tree** | `fixtures/recipes/*.yaml` + `find_recipe` | via MCP | ◐ schema + stub (extraction needs PRs/humans — prompts in the spec appendices) |
+
+## The L2 generator (`kb/l2.py`)
+
+L1 is mechanical; L2 turns it into reviewed-quality English. The generator is a plain
+orchestrator that **spawns an AI-agent executable per node** and feeds it the real source —
+the model is a pluggable dependency, not baked in:
+
+- `--backend claude` → spawns `claude -p … --output-format json --tools ""` (headless, tools
+  off: pure text-gen). Parses the result envelope; surfaces spawn/timeout/protocol errors.
+- `--backend cmd --cmd "TEMPLATE"` → **any** other agent executable (prompt on `{prompt}` or
+  stdin) — bring your own model.
+
+It is **bottom-up**: a *file* (leaf) is summarized from its full source and must cite real
+`[Lxx]` lines (`evidence_level: code`); a *module* is summarized only from its children's
+`fold`s (`evidence_level: inferred`, no fabricated lines) — cheap, and what the firewall keys
+on. The lint is wired in as a **closed control loop**: every summary is linted, and on failure
+the exact errors are fed back to the agent to fix; only lint-clean summaries land in
+`summaries.jsonl` (confidence `draft`, never auto-trusted), and incorrigible bluffs go to
+`quarantine.jsonl` for a human. Re-runs are incremental (content-hashed), so only the changed
+sub-tree costs anything.
+
+```
+python -m kb.l2 build <l1_dir> <codebase> <out> --backend claude --only math/ --limit 50
+# -> summaries.jsonl (drafts) + quarantine.jsonl + l2_cache.json
+```
 
 ## The op matcher (`ops.jsonl`)
 
@@ -35,18 +61,25 @@ python -m kb.l1 ops /path/to/onnxruntime/core/providers/cpu -   # prints ops.jso
 
 ```
 python -m kb.l1 build  <codebase> <out_dir>     # symbols/edges/ops/module_map
-python -m kb.lint      summaries.yaml --code <codebase> --symbols <out>/symbols.jsonl
+python -m kb.l2 build  <out_dir> <codebase> <l2_dir> --backend claude   # generate summaries
+python -m kb.lint      summaries.jsonl --code <codebase> --symbols <out_dir>/symbols.jsonl
 KB_DIR=<out_dir> python -m kb.mcp_server        # then speak MCP JSON-RPC on stdin
-python -m pytest -q                             # 9 tests
+python -m pytest -q                             # 14 tests
 ```
 
 ## Verification (production-quality gate)
 
-- **`pytest`: 9/9 pass** (ops extraction, pagerank distribution, lint good/bad, hash stability,
-  firewall cascade, MCP tools, unknown-tool error).
+- **`pytest`: 14/14 pass** (ops extraction, pagerank distribution, lint good/bad, hash
+  stability, firewall cascade, MCP tools, unknown-tool error, **L2 generate / self-repair /
+  quarantine / incremental-skip**). L2 tests use a deterministic `MockBackend` — CI never spawns
+  an agent or hits the network.
 - **Real-source run:** the op matcher extracted **378 registrations / 123 distinct ops** from a
   sparse checkout of ONNX Runtime's CPU provider (`Conv`, `Gemm`, `MatMul`, `Softmax`, …) with
   correct versions + `file:line` anchors.
+- **L2 real run:** `kb.l2 --backend claude` spawned Claude Code over ONNX Runtime's `math/clip`
+  files and produced lint-clean draft summaries with **real** line citations
+  (`[L13-18]`, `[L90-93]`); the module synthesis correctly emitted `inferred` with no fabricated
+  lines. A second run was fully cache-served ($0) — the freshness firewall.
 - **MCP server** answered `initialize`/`tools/list`/`tools/call` over a built KB.
 
 ## Reconciliation with the spec
@@ -59,8 +92,10 @@ python -m pytest -q                             # 9 tests
   This prototype uses **ctags + a macro matcher + a heuristic call graph** (tagged
   `xref:partial`, exactly the spec's pragmatic fallback). Upgrade path: clangd via
   `compile_commands.json` for an accurate call graph; tree-sitter for richer structure.
-- **L2 summaries:** the lint + schema are here; the LLM summarization *runner* is the remaining
-  piece (the spec's leaf/synthesis prompts are in its appendices). It plugs in above this lint.
+- **L2 summaries:** lint + schema + the **generator** (`kb/l2.py`) are all here — it spawns an
+  agent per node and self-repairs against the lint. The remaining work is human: module owners
+  promote `draft` → `reviewed` (the lint guarantees claims are *anchored*, not that they are
+  *right* — citation existence is machine-checkable; citation accuracy is the review's job).
 - **L3 / find_recipe:** keyword match today; the spec's one sanctioned place for **semantic
   search** (over recipes, never raw source) is the upgrade.
 
@@ -68,7 +103,7 @@ python -m pytest -q                             # 9 tests
 ```
 framework/kb/
   registration_patterns.yaml   # op macros per framework (data-driven)
-  kb/l1.py kb/lint.py kb/incremental.py kb/mcp_server.py
+  kb/l1.py kb/l2.py kb/lint.py kb/incremental.py kb/mcp_server.py
   fixtures/mini-runtime/        # tiny C++ exercising each op macro (deterministic tests)
   fixtures/recipes/add-an-op.yaml
   tests/test_kb.py
