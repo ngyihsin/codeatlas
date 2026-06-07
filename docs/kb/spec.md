@@ -221,7 +221,7 @@ Ranked by leverage on the **KB itself** (current scope). G-IDs are stable (refer
 | ~~G8~~ ✅ | **Human-review workflow** — *done (M2.2)*: `kb/review.py` promote ladder (draft→reviewed→battle-tested) + evidence anchors | turns the trust ladder from inert to operational | [survey][survey] |
 | ~~G9~~ ◐ | **L3 semantic search** — *done (M3.1)*: pluggable `Embedder`+vector `find_recipe` (dependency-free default; MiniLM/sqlite-vec drop-ins); 2 recipes | recipe *mining* still a scaffold | [GraphRAG][graphrag] |
 | ~~G2~~ ✅ | **Tests index** — *done (M2.3)*: `tests.jsonl` + `find_tests`; real ORT links Clip→clip_test.cc | "what guards this code?" (and later, regression safety) | [regression][regress] |
-| **G10** | **MCP: no pagination/resources, single transport** | budget + scale | [MCP spec][mcp] |
+| ~~G10~~ ✅ | **MCP scale** — *done (M3.2)*: 2025-06-18, cursor pagination + total (fixes silent truncation), resources, Streamable HTTP | budget + scale | [MCP spec][mcp] |
 
 **Deferred with the issue→code loop (§7), not part of current scope:**
 

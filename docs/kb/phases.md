@@ -104,8 +104,8 @@ Gaps: **G9, G10, freshness SLO**.
 
 **Exit gate**
 - [x] M3.1 paraphrase retrieves the right recipe ✅ (vector search; 'introduce a new kernel'→add-an-op, 'wrong fp16'→fix-a-dispatch-bug)
-- [ ] M3.2 paginated `find_symbol` within budget + `nextCursor`; HTTP transport answers JSON-RPC
-- [ ] M3.2 silent-truncation bug fixed (truncated result carries a cursor)
+- [x] M3.2 pagination ✅ (find_symbol(Compute): total=897, returned=25, nextCursor; HTTP transport round-trip; resources/list)
+- [x] M3.2 silent-truncation bug fixed ✅ (results carry total + nextCursor)
 - [ ] M3.3 drift sampler flags an intentionally-stale node
 
 ---

@@ -12,7 +12,7 @@ from kb import eval as kbeval                               # noqa: E402
 from kb import review                                       # noqa: E402
 from kb import scip_ingest                                  # noqa: E402
 from kb import recipes as kbrecipes                         # noqa: E402
-from kb.mcp_server import KB, handle                        # noqa: E402
+from kb.mcp_server import KB, handle, BUDGET, serve_http    # noqa: E402
 
 FIX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "mini-runtime")
 FIX = os.path.abspath(FIX)
@@ -295,6 +295,81 @@ def test_mcp_tools(tmp_path):
     # find_symbol is token-budgeted (compact rows, not raw files)
     rows = kb.find_symbol("Compute", detail="fold")
     assert rows and all(set(r) <= {"anchor", "kind"} for r in rows)
+
+
+# ----------------------------------------------------------- M3.2 MCP scale
+def _kb_with_many_symbols(tmp_path, n):
+    kbdir = tmp_path / "kb"; kbdir.mkdir()
+    with open(kbdir / "symbols.jsonl", "w") as f:
+        for i in range(n):
+            f.write(json.dumps({"id": f"x.cc:Foo{i}:{i}", "name": f"Foo{i}",
+                                "path": "x.cc", "kind": "function", "importance": 0.0}) + "\n")
+    return KB(str(kbdir))
+
+
+def test_mcp_pagination_reports_total_and_cursor(tmp_path):
+    kb = _kb_with_many_symbols(tmp_path, BUDGET + 10)
+    r = handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                "params": {"name": "find_symbol", "arguments": {"query": "foo"}}}, kb)
+    res = r["result"]
+    assert res["total"] == BUDGET + 10                 # honest total, not silently truncated
+    assert res["returned"] == BUDGET and "nextCursor" in res
+    page1 = json.loads(res["content"][0]["text"])
+    # follow the cursor for the next page
+    r2 = handle({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                 "params": {"name": "find_symbol",
+                            "arguments": {"query": "foo", "cursor": res["nextCursor"]}}}, kb)
+    page2 = json.loads(r2["result"]["content"][0]["text"])
+    assert len(page2) == 10 and page1 != page2 and "nextCursor" not in r2["result"]
+
+
+def test_mcp_invalid_cursor_errors(tmp_path):
+    kb = _kb_with_many_symbols(tmp_path, 3)
+    r = handle({"jsonrpc": "2.0", "id": 1, "method": "tools/list",
+                "params": {"cursor": "!!!not-base64!!!"}}, kb)
+    assert r["error"]["code"] == -32602
+
+
+def test_mcp_initialize_version_and_capabilities(tmp_path):
+    kb = _kb_with_many_symbols(tmp_path, 1)
+    r = handle({"jsonrpc": "2.0", "id": 1, "method": "initialize"}, kb)
+    assert r["result"]["protocolVersion"] == "2025-06-18"
+    assert "resources" in r["result"]["capabilities"]
+
+
+@pytest.mark.skipif(not HAS_CTAGS, reason="universal-ctags not installed")
+def test_mcp_resources_list_and_read(tmp_path):
+    kbdir = tmp_path / "kb"
+    l1.build(FIX, str(kbdir))
+    kb = KB(str(kbdir))
+    rl = handle({"jsonrpc": "2.0", "id": 1, "method": "resources/list"}, kb)
+    uris = {r["uri"] for r in rl["result"]["resources"]}
+    assert "kb://ops" in uris and "kb://module_map" in uris
+    rd = handle({"jsonrpc": "2.0", "id": 2, "method": "resources/read",
+                 "params": {"uri": "kb://module_map"}}, kb)
+    assert "Module Map" in rd["result"]["contents"][0]["text"]
+    bad = handle({"jsonrpc": "2.0", "id": 3, "method": "resources/read",
+                  "params": {"uri": "kb://nope"}}, kb)
+    assert bad["error"]["code"] == -32602
+
+
+def test_mcp_http_transport_roundtrip(tmp_path):
+    import socket, threading, urllib.request, time
+    kb = _kb_with_many_symbols(tmp_path, 2)
+    s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+    threading.Thread(target=serve_http, args=(kb, "127.0.0.1", port), daemon=True).start()
+    url = f"http://127.0.0.1:{port}/mcp"
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize"}).encode()
+    last = None
+    for _ in range(50):                       # wait for server to come up
+        try:
+            req = urllib.request.Request(url, data=body,
+                                         headers={"Content-Type": "application/json"})
+            last = json.loads(urllib.request.urlopen(req, timeout=2).read())
+            break
+        except Exception:
+            time.sleep(0.05)
+    assert last and last["result"]["protocolVersion"] == "2025-06-18"
 
 
 def test_mcp_unknown_tool_errors():

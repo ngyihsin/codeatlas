@@ -122,7 +122,7 @@ claim.*
 - **Exit:** a paraphrased task ("introduce a new kernel") retrieves `add-an-op`; index rebuild is
   scripted and "time since full reindex" is tracked.
 
-### M3.2 — MCP scale features (G10) · M
+### M3.2 — MCP scale features (G10) · M · ✅ DONE
 - Add **cursor pagination** (`nextCursor`) and the **tools-vs-resources** split (static context
   as read-only resources); **Streamable HTTP** transport beside stdio; **lazy schema loading**
   to avoid the ~75k-token startup tax ([mcp][mcp], [mcp-bloat][mcp-bloat]). `kb/mcp_server.py`.

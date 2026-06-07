@@ -81,7 +81,7 @@ class KB:
         hits = [s for s in self.symbols if q in s.get("name", "").lower()]
         hits.sort(key=lambda s: -s.get("importance", 0))
         rows = []
-        for s in hits[:BUDGET]:
+        for s in hits:
             anchor = f"{s['path']} → {s['name']}"
             # Prefer a symbol-scoped L2 summary (joined by symbol id); fall back to the
             # file-level summary; fall back to the bare L1 signature if neither exists.
@@ -116,7 +116,7 @@ class KB:
         return [{"op": o.get("op_name"), "version": o.get("version"),
                  "provider": o.get("provider"), "framework": o.get("framework"),
                  "anchor": f"{o.get('kernel_path')}:{o.get('line')}"}
-                for o in hits[:BUDGET]]
+                for o in hits]
 
     def get_summary(self, path: str) -> dict:
         # Direct access to a file/module L2 explanation (e.g. "math/clip.cc" or "module:math").
@@ -128,7 +128,7 @@ class KB:
         leaf = symbol.split("::")[-1]
         hits = [t for t in self.tests if t.get("name") in (symbol, leaf)]
         return [{"test": t["test"], "guards": t["name"], "kind": t.get("kind", "regression")}
-                for t in hits[:BUDGET]]
+                for t in hits]
 
     def relevant_code(self, query: str, k: int = 5) -> list[dict]:
         # Hybrid NL→code retrieval (lexical + call-graph expansion + importance).
@@ -183,10 +183,38 @@ class KB:
                 return r
         return {"error": f"recipe '{recipe_id}' not found"}
 
+    # ---- resources (application-driven, read-only context) ----
+    def list_resources(self) -> list[dict]:
+        out = [{"uri": "kb://ops", "name": "Op registry",
+                "mimeType": "application/jsonl", "size": len(self.ops)}]
+        if os.path.isfile(os.path.join(self.dir, "module_map.md")):
+            out.append({"uri": "kb://module_map", "name": "Module map",
+                        "mimeType": "text/markdown"})
+        for s in self.summaries:
+            if s.get("path"):
+                out.append({"uri": f"kb://summary/{s['id']}", "name": s.get("fold", s["id"]),
+                            "mimeType": "text/plain"})
+        return out
+
+    def read_resource(self, uri: str) -> dict:
+        if uri == "kb://ops":
+            return {"uri": uri, "mimeType": "application/jsonl",
+                    "text": "\n".join(json.dumps(o) for o in self.ops)}
+        if uri == "kb://module_map":
+            p = os.path.join(self.dir, "module_map.md")
+            return {"uri": uri, "mimeType": "text/markdown",
+                    "text": open(p, encoding="utf-8").read() if os.path.isfile(p) else ""}
+        if uri.startswith("kb://summary/"):
+            sid = uri[len("kb://summary/"):]
+            s = self.summary_by_id.get(sid)
+            return {"uri": uri, "mimeType": "text/plain",
+                    "text": json.dumps(s) if s else ""}
+        return {"error": f"unknown resource {uri!r}"}
+
     def what_changed(self, symbol: str) -> list[dict]:
         return [{"anchor": f"{s['path']} → {s['name']}", "churn": s.get("churn", 0),
                  "last_author": s.get("last_author", ""), "last_modified": s.get("last_modified", "")}
-                for s in self.symbols if s.get("name") == symbol][:BUDGET]
+                for s in self.symbols if s.get("name") == symbol]
 
     def review_status(self, symbol: str) -> list[dict]:
         # Reflect the real L2 review state. Match by name, qualified-name leaf, or id;
@@ -201,7 +229,7 @@ class KB:
                       if summ else "mechanical (L1)")
             out.append({"anchor": f"{s['path']} → {s['name']}", "status": status,
                         "importance": s.get("importance", 0)})
-        return out[:BUDGET]
+        return out
 
 
 TOOLS = [
@@ -232,21 +260,68 @@ TOOLS = [
 ]
 
 
+PROTOCOL_VERSION = "2025-06-18"
+_PAGE = 50          # items per page for list endpoints
+
+
+def _encode_cursor(offset: int) -> str:
+    import base64
+    return base64.urlsafe_b64encode(json.dumps({"o": offset}).encode()).decode()
+
+
+def _decode_cursor(cursor: str | None) -> int | None:
+    if not cursor:
+        return 0
+    try:
+        import base64
+        return int(json.loads(base64.urlsafe_b64decode(cursor.encode())).get("o", 0))
+    except Exception:
+        return None      # invalid cursor -> caller gets -32602
+
+
+def _paginate(items: list, offset: int, size: int) -> tuple[list, str | None]:
+    page = items[offset:offset + size]
+    nxt = _encode_cursor(offset + size) if offset + size < len(items) else None
+    return page, nxt
+
+
 def handle(req: dict, kb: KB) -> dict | None:
     mid = req.get("id")
     method = req.get("method", "")
     if method == "initialize":
-        return _ok(mid, {"protocolVersion": "2024-11-05",
-                         "capabilities": {"tools": {}},
-                         "serverInfo": {"name": "codeatlas-kb", "version": "0.1.0"}})
-    if method == "notifications/initialized":
+        return _ok(mid, {"protocolVersion": PROTOCOL_VERSION,
+                         "capabilities": {"tools": {"listChanged": False},
+                                          "resources": {"listChanged": False}},
+                         "serverInfo": {"name": "codeatlas-kb", "version": "0.2.0"}})
+    if method in ("notifications/initialized", "notifications/cancelled"):
         return None
+
     if method == "tools/list":
-        return _ok(mid, {"tools": TOOLS})
+        off = _decode_cursor(req.get("params", {}).get("cursor"))
+        if off is None:
+            return _err(mid, -32602, "invalid cursor")
+        page, nxt = _paginate(TOOLS, off, _PAGE)
+        return _ok(mid, {"tools": page, **({"nextCursor": nxt} if nxt else {})})
+
+    if method == "resources/list":
+        off = _decode_cursor(req.get("params", {}).get("cursor"))
+        if off is None:
+            return _err(mid, -32602, "invalid cursor")
+        page, nxt = _paginate(kb.list_resources(), off, _PAGE)
+        return _ok(mid, {"resources": page, **({"nextCursor": nxt} if nxt else {})})
+
+    if method == "resources/read":
+        uri = req.get("params", {}).get("uri", "")
+        res = kb.read_resource(uri)
+        if "error" in res:
+            return _err(mid, -32602, res["error"])
+        return _ok(mid, {"contents": [res]})
+
     if method == "tools/call":
         params = req.get("params", {})
         name = params.get("name")
-        args = params.get("arguments", {})
+        args = dict(params.get("arguments", {}))
+        cursor = args.pop("cursor", None)          # paginate large tool results
         fn = getattr(kb, name, None)
         if not callable(fn) or name not in {t["name"] for t in TOOLS}:
             return _err(mid, -32601, f"unknown tool: {name}")
@@ -254,6 +329,16 @@ def handle(req: dict, kb: KB) -> dict | None:
             result = fn(**args)
         except TypeError as e:
             return _err(mid, -32602, f"bad arguments: {e}")
+        if isinstance(result, list):               # honest pagination: total + nextCursor
+            off = _decode_cursor(cursor)
+            if off is None:
+                return _err(mid, -32602, "invalid cursor")
+            page, nxt = _paginate(result, off, BUDGET)
+            out = {"content": [{"type": "text", "text": json.dumps(page, ensure_ascii=False)}],
+                   "total": len(result), "returned": len(page)}
+            if nxt:
+                out["nextCursor"] = nxt            # fixes silent truncation
+            return _ok(mid, out)
         return _ok(mid, {"content": [{"type": "text",
                                       "text": json.dumps(result, ensure_ascii=False)}]})
     return _err(mid, -32601, f"unknown method: {method}")
@@ -267,11 +352,64 @@ def _err(mid, code, msg):
     return {"jsonrpc": "2.0", "id": mid, "error": {"code": code, "message": msg}}
 
 
+def serve_http(kb: KB, host: str = "127.0.0.1", port: int = 8765) -> None:
+    """Streamable-HTTP-style transport (MCP 2025-06-18): one endpoint, POST per message,
+    JSON response (or 202 for notifications). Localhost-bound; validates Origin to avoid
+    DNS-rebinding. Dependency-free (stdlib http.server)."""
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    class H(BaseHTTPRequestHandler):
+        def log_message(self, *a):            # quiet
+            pass
+
+        def _bad(self, code, msg):
+            self.send_response(code); self.end_headers()
+            self.wfile.write(msg.encode())
+
+        def do_POST(self):
+            origin = self.headers.get("Origin", "")
+            if origin and not (origin.startswith("http://127.0.0.1")
+                               or origin.startswith("http://localhost")):
+                return self._bad(403, "forbidden origin")
+            n = int(self.headers.get("Content-Length", 0))
+            try:
+                req = json.loads(self.rfile.read(n) or b"{}")
+            except ValueError:
+                body = json.dumps(_err(None, -32700, "parse error")).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body))); self.end_headers()
+                return self.wfile.write(body)
+            resp = handle(req, kb)
+            if resp is None:                  # notification -> 202, no body
+                return self._bad(202, "")
+            body = json.dumps(resp, ensure_ascii=False).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body))); self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):                     # no server-initiated stream
+            self._bad(405, "method not allowed")
+
+    ThreadingHTTPServer((host, port), H).serve_forever()
+
+
 def main(argv: list[str]) -> int:
+    if "--http" in argv:
+        i = argv.index("--http")
+        port = int(argv[i + 1]) if i + 1 < len(argv) else 8765
+        argv = argv[:i] + argv[i + 2:]
+    else:
+        port = None
     kb_dir = (argv[0] if argv else None) or os.environ.get("KB_DIR")
     if not kb_dir:
         print("set KB_DIR or pass a kb dir", file=sys.stderr); return 2
     kb = KB(kb_dir)
+    if port is not None:
+        print(f"codeatlas-kb MCP on http://127.0.0.1:{port} (POST JSON-RPC)", file=sys.stderr)
+        serve_http(kb, port=port)
+        return 0
     for line in sys.stdin:
         line = line.strip()
         if not line:
