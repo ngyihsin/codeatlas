@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 
 from .retrieve import _tokens   # shared tokenization (lowercase, stopword-filtered)
 
@@ -49,6 +50,21 @@ def cosine(a: list[float], b: list[float]) -> float:
     return sum(x * y for x, y in zip(a, b))   # inputs are L2-normalized
 
 
+def get_embedder(model_dir: str | None = None) -> Embedder:
+    """The real (MiniLM/ONNX) embedder when a model dir is configured and loads, else the
+    dependency-free HashEmbedder. `model_dir` (containing model.onnx + vocab.txt) defaults
+    to $KB_MINILM_DIR. Same graceful-degradation pattern as the scip-clang tier."""
+    model_dir = model_dir or os.environ.get("KB_MINILM_DIR")
+    if (model_dir and os.path.isfile(os.path.join(model_dir, "model.onnx"))
+            and os.path.isfile(os.path.join(model_dir, "vocab.txt"))):
+        try:
+            from .embed import OnnxEmbedder
+            return OnnxEmbedder.from_dir(model_dir)
+        except Exception:
+            pass     # missing onnxruntime / bad model -> fall back, never crash lookups
+    return HashEmbedder()
+
+
 def _recipe_text(r: dict) -> str:
     parts = [str(r.get(k, "")) for k in ("title", "task", "when")]
     parts += [str(dp.get("q", "")) for dp in r.get("decision_points", []) if isinstance(dp, dict)]
@@ -60,7 +76,7 @@ class RecipeIndex:
     """Vector index over recipes. Small N -> brute-force cosine (no ANN needed)."""
 
     def __init__(self, recipes: list[dict], embedder: Embedder | None = None):
-        self.embedder = embedder or HashEmbedder()
+        self.embedder = embedder or get_embedder()
         self.recipes = recipes
         self.vectors = [self.embedder.embed(_recipe_text(r)) for r in recipes]
 

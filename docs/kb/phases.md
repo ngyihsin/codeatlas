@@ -104,6 +104,8 @@ Gaps: **G9, G10, freshness SLO**.
 
 **Exit gate**
 - [x] M3.1 paraphrase retrieves the right recipe ✅ (vector search; 'introduce a new kernel'→add-an-op, 'wrong fp16'→fix-a-dispatch-bug)
+- [x] M3.1+ **real MiniLM/ONNX embedder** ✅ (`kb/embed.py`; self-contained WordPiece; injectable session → offline-tested; real ORT path validated on a synthetic model; HashEmbedder fallback) — real-model semantics need an env with HF access
+- [x] M3.1+ **recipe mining** ✅ (`kb/mine_recipes.py`; clusters git history → candidate draft recipes; validated on codeatlas history → 2 candidates)
 - [x] M3.2 pagination ✅ (find_symbol(Compute): total=897, returned=25, nextCursor; HTTP transport round-trip; resources/list)
 - [x] M3.2 silent-truncation bug fixed ✅ (results carry total + nextCursor)
 - [x] M3.3 drift sampler flags an intentionally-stale node ✅ (real ORT: edit clip.cc -> stale=1, fresh_rate 0.997)

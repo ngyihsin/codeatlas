@@ -110,7 +110,7 @@ claim.*
 
 ## Phase 3 — Knowledge moat & scale
 
-### M3.1 — L3 recipe semantic search (G9) · L · ✅ DONE (mining = scaffold)
+### M3.1 — L3 recipe semantic search + mining (G9) · L · ✅ DONE (MiniLM/ONNX embedder + git-history miner)
 - Recipe miner: cluster related past PRs/changes into candidate decision-tree recipes for human
   review (the tacit moat); land as `draft`, promote on RD review. `kb/mine_recipes.py`.
 - Replace `find_recipe` keyword match with embeddings **over the recipe layer only** (the one

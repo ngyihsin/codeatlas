@@ -13,6 +13,8 @@ from kb import review                                       # noqa: E402
 from kb import scip_ingest                                  # noqa: E402
 from kb import drift                                        # noqa: E402
 from kb import recipes as kbrecipes                         # noqa: E402
+from kb import embed as kbembed                             # noqa: E402
+from kb import mine_recipes                                 # noqa: E402
 from kb.mcp_server import KB, handle, BUDGET, serve_http    # noqa: E402
 
 FIX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "mini-runtime")
@@ -718,3 +720,68 @@ def test_mcp_find_symbol_without_l2_falls_back(tmp_path):
     rows = kb.find_symbol("frob", detail="preview")
     assert rows and "summary" not in rows[0]          # degrades, no L2 key invented
     assert kb.review_status("frobnicate")[0]["status"] == "mechanical (L1)"
+
+
+# ---- L3 #1: real (MiniLM/ONNX) embedder, verified offline via an injected session ----
+
+def test_wordpiece_tokenizer_subwords_and_unk():
+    vocab = {t: i for i, t in enumerate(
+        ["[PAD]", "[UNK]", "[CLS]", "[SEP]", "run", "##ning", "fox", "##es"])}
+    tok = kbembed.WordPieceTokenizer(vocab)
+    assert tok.tokenize("running foxes") == ["run", "##ning", "fox", "##es"]
+    assert tok.tokenize("zzzz") == ["[UNK]"]                     # unsplittable -> UNK
+    ids, mask, types = tok.encode("running")
+    assert ids[0] == vocab["[CLS]"] and ids[-1] == vocab["[SEP]"]
+    assert mask == [1] * len(ids) and types == [0] * len(ids)
+
+
+def test_mean_pool_normalize_masks_and_unit_length():
+    # two tokens, dim 2; mask drops the second -> mean is the first row, then L2-normalized
+    out = [[[3.0, 4.0], [100.0, 100.0]]]
+    v = kbembed.mean_pool_normalize(out, mask=[1, 0])
+    assert v == [0.6, 0.8]                                        # 3-4-5 triangle
+    assert abs(sum(x * x for x in v) - 1.0) < 1e-9
+
+
+def test_onnx_embedder_with_fake_session():
+    # a fake session lets us verify tokenize -> run -> pool -> normalize without onnxruntime
+    vocab = {t: i for i, t in enumerate(["[PAD]", "[UNK]", "[CLS]", "[SEP]", "a", "b"])}
+    tok = kbembed.WordPieceTokenizer(vocab)
+
+    class FakeSession:
+        def run(self, _, feeds):                 # ORT output 0 is (1, seq, dim)
+            seq = len(feeds["input_ids"][0])
+            rows = [[1.0, 0.0] for _ in range(seq)]   # constant token embeddings -> [1,0]
+            return [[rows]]
+    emb = kbembed.OnnxEmbedder(FakeSession(), tok)
+    assert emb.embed("a b") == [1.0, 0.0]
+
+
+def test_get_embedder_falls_back_without_model(tmp_path):
+    assert isinstance(kbrecipes.get_embedder(str(tmp_path)), kbrecipes.HashEmbedder)
+    assert isinstance(kbrecipes.get_embedder(None), kbrecipes.HashEmbedder)
+
+
+# ---- L3 #2: recipe mining from commit history ----
+
+def test_mine_recipes_clusters_by_area():
+    commits = [
+        {"sha": "a1" * 8, "subject": "add Clip op kernel",
+         "files": ["onnx/core/math/clip.cc", "onnx/core/math/clip.h"]},
+        {"sha": "b2" * 8, "subject": "fix Clip op dispatch",
+         "files": ["onnx/core/math/gemm.cc"]},
+        {"sha": "c3" * 8, "subject": "register op for math",
+         "files": ["onnx/core/math/softmax.cc"]},
+        {"sha": "d4" * 8, "subject": "unrelated docs", "files": ["docs/readme.md"]},
+    ]
+    recipes = mine_recipes.mine(commits, min_cluster=3)
+    assert len(recipes) == 1                          # only the math cluster reaches 3
+    r = recipes[0]
+    assert r["id"] == "mined:onnx-core" and r["confidence"] == "draft"
+    assert r["source"] == "mined" and len(r["evidence"]) == 3
+    assert "clip" in r["when"]                        # recurring keyword distilled (>2 chars)
+
+
+def test_mine_recipes_min_cluster_filters_noise():
+    commits = [{"sha": "z" * 16, "subject": "one off", "files": ["a/b/c.cc"]}]
+    assert mine_recipes.mine(commits, min_cluster=3) == []

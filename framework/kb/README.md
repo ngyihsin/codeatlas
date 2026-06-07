@@ -23,8 +23,9 @@ It is an **ETL pipeline, not a doc set** — judged on token cost + freshness.
 | **L2 faithfulness/eval harness** | `kb/eval.py` | `python -m kb.eval run <summaries> --code <root>` | ✅ claim-decompose + per-claim entailment; coverage; no BLEU/ROUGE |
 | **Human-review ladder** | `kb/review.py` | `python -m kb.review promote …` | ✅ draft→reviewed→battle-tested + evidence anchors |
 | **Drift sampler** | `kb/drift.py` | `python -m kb.drift sample <kb> <code>` | ✅ fresh_rate SLO; flags silent staleness |
-| **L3 recipe semantic search** | `kb/recipes.py` + `find_recipe` | via MCP | ◐ vector search done (pluggable embedder; MiniLM/sqlite-vec drop-ins); PR-mining still a scaffold |
-| **Precise call-graph tier** | `kb/scip_ingest.py` | `python -m kb.scip_ingest from-json …` | ◐ SCIP ingest done; live scip-clang run needs a build |
+| **L3 recipe semantic search** | `kb/recipes.py` + `kb/embed.py` + `find_recipe` | via MCP | ✅ vector search; **MiniLM/ONNX embedder** (`KB_MINILM_DIR`, HashEmbedder fallback); sqlite-vec still a future drop-in |
+| **L3 recipe mining** | `kb/mine_recipes.py` | `python -m kb.mine_recipes <repo>` | ✅ clusters git history into candidate `draft` recipes for review |
+| **Precise call-graph tier** | `kb/scip_ingest.py` | `python -m kb.scip_ingest from-json …` | ✅ live scip-clang validated; innermost-scope caller resolution; ORT-scale run needs a build |
 
 ## The L2 generator (`kb/l2.py`)
 
