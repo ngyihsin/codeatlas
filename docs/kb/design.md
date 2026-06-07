@@ -48,7 +48,8 @@ a working build and still over-approximates indirect calls ([LLVM][llvm-cg]). So
   `xref:partial`.
 - **Tier B (build-aware, upgrade):** scip-clang via `compile_commands.json` → precise
   go-to-def/find-refs/cross-TU edges tagged `xref:precise`. Parallel, crash-isolated workers let
-  it survive a bad TU on huge trees ([scip-clang][scipclang]).
+  it survive a bad TU on huge trees ([scip-clang][scipclang]). **Ingested via `scip print --json`
+  + stdlib `json`** (no protobuf dep) — see `leverage.md §G4` for the build-vs-reuse rationale.
 
 The agent always sees a `precision` field and treats `xref:partial` indirect edges as candidate
 sets.

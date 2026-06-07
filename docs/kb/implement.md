@@ -55,6 +55,9 @@ retrieval entry point we use to measure relevance.
   (b) **entity-trace** — static-extract code entities, verify alignment (ETF ~73% F1 [etf][etf]);
   (c) **calibrated confidence** from token logits, not self-report ([calib][calib]).
 - Metrics: lint-clean %, entailment %, retrieval@5, coverage. **No BLEU/ROUGE** ([bleu][bleu]).
+- **Leverage (`leverage.md` G7):** PATTERN reimplementation on the `claude` subprocess — *no*
+  RAGAS/DeepEval (LangChain/OpenAI-SDK/telemetry). ETF entity pass reimplemented (paper-only).
+  No logprobs → confidence via self-consistency + isotonic fit. `SummaC` optional behind `extras`.
 - **Exit:** harness runs in CI on the fixture KB; entailment ≥85% on seed summaries; metrics
   tracked over time.
 
@@ -62,6 +65,10 @@ retrieval entry point we use to measure relevance.
 - Extend the dirty-set logic: on a changed file, also invalidate/re-emit the **call & xref edges**
   touching its symbols and mark dependent summaries dirty — not just the file's own facts
   ([Glean][glean]). `kb/incremental.py` (+`dirty_edges`, `dirty_dependents`).
+- **Leverage (`leverage.md` G6):** mostly *wiring* — `compute_dirty` already exists and is tested
+  but is **dead code** (never called by the pipeline). Wire it into `l2.build`; make
+  `l1.build_edges` incremental with Glean-style caller-file ownership; persist per-file source
+  hashes; keep a periodic full rebuild as a backstop (heuristic edges can miss a call).
 - **Exit:** a unit test where editing a callee's signature marks the caller's edge *and* the
   caller's summary dirty; the firewall still stops where previews are unchanged.
 
@@ -78,6 +85,9 @@ claim.*
 - Add an optional ingest: if `compile_commands.json` is present, run **scip-clang**, convert SCIP
   occurrences → `edges.jsonl` tagged `xref:precise` (macros + types resolved [scipclang][scipclang]).
   `kb/scip_ingest.py`. Falls back to Tier-A heuristic when absent.
+- **Leverage (`leverage.md` G4):** REUSE the prebuilt `scip-clang` binary (x86_64-Linux, no
+  build); ingest via `scip print --json` + **stdlib `json`** (no protobuf dep — there is no
+  maintained Python SCIP lib). `enclosing_range` → caller; reference occurrence → callee.
 - Keep indirect/virtual edges tagged as **candidate sets** ([LLVM][llvm-cg]).
 - **Exit:** on an ORT build, a known virtual-dispatch call resolves to ≥1 precise edge;
   `relevant_code` accuracy on the decontaminated set improves vs M1.2 (report delta).
@@ -106,6 +116,9 @@ claim.*
 - Replace `find_recipe` keyword match with embeddings **over the recipe layer only** (the one
   sanctioned place [§spec 3]), small index + metadata pre-filter ([hnsw][hnsw]); keyword remains
   the fallback behind the same interface.
+- **Leverage (`leverage.md` G9):** REUSE **`sqlite-vec`** (zero-dep, ~163 KB, rides stdlib
+  `sqlite3`); embed recipe NL text with `all-MiniLM-L6-v2` via **ONNX Runtime** (no torch) or an
+  embedding API. Keep our own L2 hierarchy (RAPTOR/GraphRAG are concept-only).
 - **Exit:** a paraphrased task ("introduce a new kernel") retrieves `add-an-op`; index rebuild is
   scripted and "time since full reindex" is tracked.
 
@@ -113,6 +126,10 @@ claim.*
 - Add **cursor pagination** (`nextCursor`) and the **tools-vs-resources** split (static context
   as read-only resources); **Streamable HTTP** transport beside stdio; **lazy schema loading**
   to avoid the ~75k-token startup tax ([mcp][mcp], [mcp-bloat][mcp-bloat]). `kb/mcp_server.py`.
+- **Leverage (`leverage.md` G10):** stay **hand-rolled** (the Python SDK pulls ~14 deps and gives
+  us neither pagination nor lazy-listing); implement the 2025-06-18 wire shapes ourselves via
+  stdlib `http.server`. **Fixes a real bug:** today `hits[:BUDGET]` truncates with no `nextCursor`
+  (truncated looks identical to complete).
 - **Exit:** a paginated `find_symbol` over a large result set stays within the row budget per
   page; HTTP transport answers `initialize`/`tools/call`.
 
