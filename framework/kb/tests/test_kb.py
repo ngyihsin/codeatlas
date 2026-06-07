@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from kb import l1, lint, incremental, l2, retrieve          # noqa: E402
 from kb import eval as kbeval                               # noqa: E402
 from kb import review                                       # noqa: E402
+from kb import scip_ingest                                  # noqa: E402
 from kb.mcp_server import KB, handle                        # noqa: E402
 
 FIX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "mini-runtime")
@@ -89,6 +90,56 @@ def test_firewall_stops_cascade():
     assert incremental.compute_dirty({"c"}, edges, fold_changed={"c"}) == {"b", "c"}
     # full cascade when every fold changes
     assert incremental.compute_dirty({"c"}, edges, fold_changed={"a", "b", "c"}) == {"a", "b", "c"}
+
+
+# --------------------------------------------------- M2.1 scip-clang precise tier
+# A synthetic SCIP `print --json` index mirroring the Sourcegraph schema (we can't
+# build ORT / run scip-clang here, so the ingest logic is verified against a fixture).
+_SCIP_INDEX = {
+    "documents": [{
+        "relativePath": "m/clip.cc",
+        "symbols": [
+            {"symbol": "cxx . . `Clip`#Compute().", "displayName": "Compute", "kind": 6},
+            {"symbol": "cxx . . `Eigen`#clamp().", "displayName": "clamp", "kind": 6},
+        ],
+        "occurrences": [
+            {"symbol": "cxx . . `Clip`#Compute().", "range": [10, 0, 40, 1],
+             "symbolRoles": 1, "enclosingRange": [10, 0, 40, 1]},          # definition
+            {"symbol": "cxx . . `Eigen`#clamp().", "range": [20, 4, 20, 9],
+             "symbolRoles": 0},                                            # reference (a call)
+            {"symbol": "local 1", "range": [21, 4, 21, 9], "symbolRoles": 0},  # ignored
+        ],
+    }],
+}
+
+
+def test_scip_parse_index_builds_precise_edges():
+    symbols, edges = scip_ingest.parse_index(_SCIP_INDEX)
+    assert {s["name"] for s in symbols} == {"Compute", "clamp"}
+    assert len(edges) == 1
+    e = edges[0]
+    assert e["caller_id"] == "cxx . . `Clip`#Compute()."          # encloses the ref
+    assert e["callee_id"] == "cxx . . `Eigen`#clamp()."
+    assert e["xref"] == "precise" and e["method"] == "scip-clang"
+
+
+def test_scip_precise_edges_take_precedence_in_mcp(tmp_path):
+    kbdir = tmp_path / "kb"
+    kbdir.mkdir()
+    (kbdir / "symbols.jsonl").write_text(
+        json.dumps({"id": "A", "name": "A", "path": "x.cc", "kind": "function"}) + "\n")
+    (kbdir / "edges.jsonl").write_text(
+        json.dumps({"caller_id": "A", "callee_id": "B", "xref": "partial"}) + "\n")
+    (kbdir / "edges.precise.jsonl").write_text(
+        json.dumps({"caller_id": "A", "callee_id": "B", "xref": "precise"}) + "\n")
+    kb = KB(str(kbdir))
+    ab = [e for e in kb.edges if e["caller_id"] == "A" and e["callee_id"] == "B"]
+    assert len(ab) == 1 and ab[0]["xref"] == "precise"     # precise wins, no duplicate
+
+
+def test_scip_build_without_binary_is_graceful():
+    with pytest.raises(SystemExit):           # scip-clang not on PATH -> clear error
+        scip_ingest.build("/nonexistent", "/nope.json", "/tmp/none")
 
 
 # ----------------------------------------------------- M2.2 human-review workflow

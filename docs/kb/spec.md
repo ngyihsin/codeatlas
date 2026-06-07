@@ -216,7 +216,7 @@ Ranked by leverage on the **KB itself** (current scope). G-IDs are stable (refer
 |---|---|---|---|
 | ~~G5~~ ✅ | **L2 per-symbol summaries** (FR-4) — *done (M1.1)*: `--granularity symbol`, joined in MCP by symbol id, verified on ORT | symbol queries now get symbol-scoped answers | — |
 | ~~G7~~ ✅ | **Faithfulness/eval harness** — *done (M1.3)*: claim-decompose + per-claim entailment (`kb/eval.py`); real ORT: lint 100%, entailment 53% (a finding) | proves grounding accuracy, not just citation existence | [ETF][etf] |
-| **G4** | **Call graph is heuristic only** (FR-2) | "what calls this / blast radius" rides on the graph | [LocAgent][locagent]; precise tier = [scip-clang][scipclang] |
+| ◐ G4 | **Precise call-graph tier** — *ingest done (M2.1)*: `kb/scip_ingest.py` SCIP→precise edges, MCP precedence; **live scip-clang run needs a build (blocked here)** | "what calls this / blast radius" | [scip-clang][scipclang] |
 | ~~G6~~ ✅ | **Derived-fact invalidation** — *done (M1.4)*: incremental L1 edges by caller-file ownership + `compute_dirty` cascade wired | stale edges/summaries → wrong answers | [Glean][glean] |
 | ~~G8~~ ✅ | **Human-review workflow** — *done (M2.2)*: `kb/review.py` promote ladder (draft→reviewed→battle-tested) + evidence anchors | turns the trust ladder from inert to operational | [survey][survey] |
 | **G9** | **L3 recipes: 1 stub, keyword search** | tacit layer is the moat | [GraphRAG][graphrag] |

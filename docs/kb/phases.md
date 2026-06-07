@@ -75,8 +75,8 @@ Gaps: **G4, G8, G2**.
   `find_tests` resolves a known symbol→test link on real ORT.
 
 **Exit gate**
-- [ ] M2.1 a virtual-dispatch call resolves to ≥1 `xref:precise` edge on an ORT build
-- [ ] M2.1 `relevant_code` accuracy improves vs Phase-1 (delta reported)
+- [◐] M2.1 ingest verified on a schema-faithful SCIP fixture (precise edges produced, MCP precedence) — **live scip-clang/ORT run BLOCKED in this env** (no binary/build)
+- [◐] M2.1 relevance-delta deferred to an environment with a compile_commands.json + scip-clang
 - [x] M2.2 review workflow ✅ (promote ladder + evidence anchors; review_status flips; validated on real ORT)
 - [x] M2.3 `find_tests` resolves a known symbol→test link on real ORT ✅ (clip_test.cc::MathOpTest.Clip_6)
 

@@ -39,6 +39,12 @@ class KB:
         self.dir = kb_dir
         self.symbols = self._jsonl("symbols.jsonl")
         self.edges = self._jsonl("edges.jsonl")
+        # Precise scip-clang edges (if ingested) take precedence over heuristic ones.
+        precise = self._jsonl("edges.precise.jsonl")
+        if precise:
+            seen = {(e["caller_id"], e["callee_id"]) for e in precise}
+            self.edges = precise + [e for e in self.edges
+                                    if (e["caller_id"], e["callee_id"]) not in seen]
         self.ops = self._jsonl("ops.jsonl")
         self.tests = self._jsonl("tests.jsonl")
         self.recipes = self._recipes()
