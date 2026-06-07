@@ -17,8 +17,14 @@ It is an **ETL pipeline, not a doc set** — judged on token cost + freshness.
 | **L2 evidence lint** (make bluffing impossible) | `kb/lint.py` | `python -m kb.lint <summaries> --code <root>` | ✅ rejects fold>20, code-claim-without-`[Lxx]`, out-of-range refs |
 | **L2 summary generator** (spawns an AI agent per node) | `kb/l2.py` | `python -m kb.l2 build <l1_dir> <code> <out> --backend claude [--granularity symbol --top-n N]` | ✅ real run over ONNX Runtime; file- and **per-symbol** summaries; lint self-repair loop; bluffs quarantined |
 | **Incremental hash + fold firewall** | `kb/incremental.py` | `python -m kb.incremental demo` | ✅ recompute only the dirty sub-tree; cascade stops at stable folds |
-| **MCP retrieval server** (token-budgeted) | `kb/mcp_server.py` | `KB_DIR=<out> python -m kb.mcp_server` | ✅ `find_symbol` (joins L2)/`find_op`/`get_summary`/`trace_callers`/`find_recipe`/`get_recipe_steps`/`what_changed`/`review_status` |
-| **L3 recipe / decision-tree** | `fixtures/recipes/*.yaml` + `find_recipe` | via MCP | ◐ schema + stub (extraction needs PRs/humans — prompts in the spec appendices) |
+| **MCP retrieval server** (MCP 2025-06-18, paginated) | `kb/mcp_server.py` | `KB_DIR=<out> python -m kb.mcp_server [--http PORT]` | ✅ 10 tools (`find_symbol`+L2 / `relevant_code` / `find_op` / `get_summary` / `find_tests` / `trace_callers` / `find_recipe` / `get_recipe_steps` / `what_changed` / `review_status`) + resources + cursor pagination (no silent truncation) |
+| **L1 tests index** | `kb/l1.py` | same build | ✅ `tests.jsonl`; `find_tests(symbol)` (real ORT: Clip→clip_test.cc) |
+| **L1 incremental edges** (Glean ownership) | `kb/l1.py`, `kb/incremental.py` | same build | ✅ per-file hashes; re-derive changed files only; `kb.incremental plan` |
+| **L2 faithfulness/eval harness** | `kb/eval.py` | `python -m kb.eval run <summaries> --code <root>` | ✅ claim-decompose + per-claim entailment; coverage; no BLEU/ROUGE |
+| **Human-review ladder** | `kb/review.py` | `python -m kb.review promote …` | ✅ draft→reviewed→battle-tested + evidence anchors |
+| **Drift sampler** | `kb/drift.py` | `python -m kb.drift sample <kb> <code>` | ✅ fresh_rate SLO; flags silent staleness |
+| **L3 recipe semantic search** | `kb/recipes.py` + `find_recipe` | via MCP | ◐ vector search done (pluggable embedder; MiniLM/sqlite-vec drop-ins); PR-mining still a scaffold |
+| **Precise call-graph tier** | `kb/scip_ingest.py` | `python -m kb.scip_ingest from-json …` | ◐ SCIP ingest done; live scip-clang run needs a build |
 
 ## The L2 generator (`kb/l2.py`)
 
