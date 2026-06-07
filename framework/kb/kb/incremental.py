@@ -67,6 +67,36 @@ def changed_symbols(symbols: list[dict], changed_paths: set[str]) -> set[str]:
     return {s["id"] for s in symbols if s.get("path") in changed_paths}
 
 
+def plan_rebuild(kb_dir: str, changed_paths: set[str],
+                 fold_changed: set[str] | None = None) -> dict:
+    """What to recompute after `changed_paths` change, over a built KB.
+
+    Wires the two derived-fact mechanisms (previously unused outside tests):
+      - edge ownership: edges whose *caller file* changed must be re-derived (Glean).
+      - summary cascade: changed symbols plus callers reached through changed folds
+        (compute_dirty firewall). With `fold_changed=None` we conservatively assume
+        every changed symbol's fold changed (full caller cascade).
+    """
+    import os
+    syms = [json.loads(l) for l in open(os.path.join(kb_dir, "symbols.jsonl"),
+                                        encoding="utf-8") if l.strip()]
+    edges = [json.loads(l) for l in open(os.path.join(kb_dir, "edges.jsonl"),
+                                         encoding="utf-8") if l.strip()]
+    changed = set(changed_paths)
+    id_to_path = {s["id"]: s.get("path") for s in syms}   # ids contain '::'; map, don't split
+    csyms = changed_symbols(syms, changed)
+    fc = set(fold_changed) if fold_changed is not None else set(csyms)
+    dirty = compute_dirty(csyms, edges, fc)
+    edges_to_rederive = sum(1 for e in edges
+                            if id_to_path.get(e["caller_id"]) in changed)
+    return {
+        "changed_files": sorted(changed),
+        "changed_symbols": len(csyms),
+        "dirty_summaries": sorted(dirty),
+        "edges_to_rederive": edges_to_rederive,
+    }
+
+
 def _demo() -> int:
     # a -> b -> c -> d   (a calls b, etc.)  plus  e -> c
     edges = [
@@ -108,6 +138,11 @@ def _demo() -> int:
 def main(argv: list[str]) -> int:
     if argv and argv[0] == "demo":
         return _demo()
+    if argv and argv[0] == "plan":
+        if len(argv) < 3:
+            print("usage: kb.incremental plan <kb_dir> <changed_path>..."); return 2
+        print(json.dumps(plan_rebuild(argv[1], set(argv[2:]))))
+        return 0
     print(__doc__)
     return 2
 

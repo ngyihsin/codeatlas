@@ -136,14 +136,20 @@ def extract_symbols(code_root: str) -> list[Symbol]:
 
 
 # ------------------------------------------------------------------------- edges
-def build_edges(code_root: str, symbols: list[Symbol]) -> list[dict]:
+def build_edges(code_root: str, symbols: list[Symbol],
+                only_paths: set[str] | None = None) -> list[dict]:
     """Heuristic call graph (xref:partial): within each file, approximate a function's
     body as [its line, next def's line) and emit an edge to every other known symbol
     referenced in that span. Cheap but useful for importance ranking; not LSP-accurate.
+
+    `only_paths` restricts which *caller* files are scanned (callee resolution stays
+    global) — used by the incremental rebuild to re-derive just the changed files.
     """
     by_path: dict[str, list[Symbol]] = {}
     for s in symbols:
         if s.kind in ("function", "method"):
+            if only_paths is not None and s.path not in only_paths:
+                continue
             by_path.setdefault(s.path, []).append(s)
     # name -> candidate symbol ids (for resolving references)
     name_to_ids: dict[str, list[str]] = {}
@@ -234,11 +240,64 @@ def git_churn(code_root: str) -> dict[str, dict]:
     return info
 
 
+# ----------------------------------------------------- incremental edge ownership
+def file_hashes(code_root: str) -> dict[str, str]:
+    """Per-file content hash (Bazel/Turborepo content-addressing) for change detection."""
+    import hashlib
+    out: dict[str, str] = {}
+    for full in _iter_code_files(code_root):
+        rel = os.path.relpath(full, code_root)
+        try:
+            out[rel] = hashlib.sha256(open(full, "rb").read()).hexdigest()
+        except OSError:
+            pass
+    return out
+
+
+def rebuild_edges(code_root: str, symbols: list[Symbol], prev_edges: list[dict],
+                  changed_paths: set[str]) -> list[dict]:
+    """Glean-style derived-fact invalidation: edges are *owned by the caller file*.
+    Keep edges whose caller file is unchanged (and still valid), re-derive edges for
+    changed files only, and drop any edge dangling against the current symbol table.
+
+    Invariant: with `changed_paths` covering every file actually edited and no new
+    globally-referenced symbol names introduced, this equals a full `build_edges`.
+    A periodic full rebuild is the backstop for the new-global-name case.
+    """
+    id_to_path = {s.id: s.path for s in symbols}   # names contain '::' — don't string-split ids
+    changed = set(changed_paths)
+    kept = [e for e in prev_edges
+            if id_to_path.get(e["caller_id"]) not in changed
+            and e["caller_id"] in id_to_path and e["callee_id"] in id_to_path]
+    fresh = build_edges(code_root, symbols, only_paths=changed)
+    return sorted(kept + fresh, key=lambda e: (e["caller_id"], e["callee_id"]))
+
+
 # --------------------------------------------------------------------------- build
 def build(code_root: str, out_dir: str, patterns_path: str | None = None) -> dict:
     os.makedirs(out_dir, exist_ok=True)
     symbols = extract_symbols(code_root)
-    edges = build_edges(code_root, symbols)
+
+    # Incremental edges: re-derive only changed files' edges when a prior build exists.
+    hashes = file_hashes(code_root)
+    cache_path = os.path.join(out_dir, "l1_cache.json")
+    edges_path = os.path.join(out_dir, "edges.jsonl")
+    prev_hashes: dict[str, str] = {}
+    if os.path.isfile(cache_path):
+        try:
+            prev_hashes = json.load(open(cache_path, encoding="utf-8")).get("file_hashes", {})
+        except ValueError:
+            prev_hashes = {}
+    mode = "full"
+    if prev_hashes and os.path.isfile(edges_path):
+        changed = {p for p, h in hashes.items() if prev_hashes.get(p) != h}
+        changed |= (set(prev_hashes) - set(hashes))   # removed files own no edges
+        prev_edges = [json.loads(l) for l in open(edges_path, encoding="utf-8") if l.strip()]
+        edges = rebuild_edges(code_root, symbols, prev_edges, changed)
+        mode = "incremental"
+    else:
+        edges = build_edges(code_root, symbols)
+        changed = set(hashes)
     pr = pagerank(symbols, edges)
     churn = git_churn(code_root)
     for s in symbols:
@@ -252,8 +311,9 @@ def build(code_root: str, out_dir: str, patterns_path: str | None = None) -> dic
     _write_jsonl(os.path.join(out_dir, "edges.jsonl"), edges)
     _write_jsonl(os.path.join(out_dir, "ops.jsonl"), (asdict(o) for o in ops))
     _write_module_map(os.path.join(out_dir, "module_map.md"), code_root, symbols, ops)
+    json.dump({"file_hashes": hashes}, open(cache_path, "w", encoding="utf-8"))
     return {"symbols": len(symbols), "edges": len(edges), "ops": len(ops),
-            "out": out_dir}
+            "mode": mode, "changed": len(changed), "out": out_dir}
 
 
 def _write_module_map(path: str, code_root: str, symbols: list[Symbol], ops: list[Op]) -> None:

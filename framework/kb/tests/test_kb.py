@@ -8,6 +8,7 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from kb import l1, lint, incremental, l2, retrieve          # noqa: E402
+from kb import eval as kbeval                               # noqa: E402
 from kb.mcp_server import KB, handle                        # noqa: E402
 
 FIX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "mini-runtime")
@@ -87,6 +88,42 @@ def test_firewall_stops_cascade():
     assert incremental.compute_dirty({"c"}, edges, fold_changed={"c"}) == {"b", "c"}
     # full cascade when every fold changes
     assert incremental.compute_dirty({"c"}, edges, fold_changed={"a", "b", "c"}) == {"a", "b", "c"}
+
+
+# ------------------------------------------------- M1.4 derived-fact invalidation
+@pytest.mark.skipif(not HAS_CTAGS, reason="universal-ctags not installed")
+def test_rebuild_edges_equals_full_when_disk_unchanged():
+    syms = l1.extract_symbols(FIX)
+    full = l1.build_edges(FIX, syms)
+    # re-deriving any subset of caller files + keeping the rest reproduces the full graph
+    some = {syms[0].path} if syms else set()
+    merged = l1.rebuild_edges(FIX, syms, full, some)
+    assert merged == full
+
+
+@pytest.mark.skipif(not HAS_CTAGS, reason="universal-ctags not installed")
+def test_l1_build_incremental_mode(tmp_path):
+    out = tmp_path / "kb"
+    r1 = l1.build(FIX, str(out))
+    assert r1["mode"] == "full"
+    e1 = [json.loads(l) for l in open(out / "edges.jsonl")]
+    r2 = l1.build(FIX, str(out))                 # nothing changed on disk
+    assert r2["mode"] == "incremental" and r2["changed"] == 0
+    e2 = [json.loads(l) for l in open(out / "edges.jsonl")]
+    assert e1 == e2                              # incremental no-op reproduces edges
+
+
+@pytest.mark.skipif(not HAS_CTAGS, reason="universal-ctags not installed")
+def test_plan_rebuild_wires_compute_dirty(tmp_path):
+    out = tmp_path / "kb"
+    l1.build(FIX, str(out))
+    # pick a real file that has symbols
+    syms = [json.loads(l) for l in open(out / "symbols.jsonl")]
+    a_path = next(s["path"] for s in syms if s.get("kind") in ("function", "method"))
+    plan = incremental.plan_rebuild(str(out), {a_path})
+    assert plan["changed_symbols"] >= 1
+    assert all(":" in d for d in plan["dirty_summaries"])    # symbol ids
+    assert plan["edges_to_rederive"] >= 0
 
 
 # -------------------------------------------------------------------- MCP server
@@ -291,6 +328,36 @@ def test_relevant_code_via_mcp(tmp_path):
                 "params": {"name": "relevant_code", "arguments": {"query": "clamp"}}}, kb)
     rows = json.loads(r["result"]["content"][0]["text"])
     assert rows and all("why" in row for row in rows)
+
+
+# --------------------------------------------------------------- M1.3 eval harness
+def test_eval_split_claims():
+    claims = kbeval.split_claims("Does A [L1]. Plain sentence here. Range [L7-9] x.")
+    assert [r for _, r in claims] == [[(1, 1)], [(7, 9)]]   # only cited sentences
+
+
+def test_eval_entailment_pass_and_fail():
+    summ = {"id": "x", "path": "cpu/elementwise_ops.cc", "fold": "x", "preview": "p",
+            "full": "clamps value to range [L7-9]", "evidence_level": "code"}
+    ok = l2.MockBackend(lambda p, a: '{"verdict":"entailed","confidence":1.0}')
+    assert kbeval.evaluate_summary(summ, FIX, ok)["faithfulness"] == 1.0
+    bad = l2.MockBackend(lambda p, a: '{"verdict":"contradicted","confidence":1.0}')
+    r = kbeval.evaluate_summary(summ, FIX, bad)
+    assert r["faithfulness"] == 0.0 and r["entailed"] == 0      # accuracy failure caught
+
+
+def test_eval_self_consistency_majority():
+    votes = iter(["entailed", "contradicted", "entailed"])
+    be = l2.MockBackend(lambda p, a: '{"verdict":"%s"}' % next(votes))
+    res = kbeval.entail_claim(be, "claim", "  1| code", samples=3)
+    assert res["verdict"] == "entailed" and abs(res["confidence"] - 2 / 3) < 1e-9
+
+
+def test_eval_coverage():
+    syms = [{"id": "a", "kind": "function", "importance": 0.9},
+            {"id": "b", "kind": "function", "importance": 0.1}]
+    cov = kbeval.coverage([{"id": "a", "scope": "symbol"}], syms, quantile=0.5)
+    assert cov["covered"] == 1 and cov["total"] >= 1
 
 
 def test_mcp_find_symbol_without_l2_falls_back(tmp_path):

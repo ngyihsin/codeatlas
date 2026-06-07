@@ -49,7 +49,7 @@ retrieval entry point we use to measure relevance.
 - **Exit:** on a small **decontaminated** NL-query set (10 queries with known target symbols),
   top-5 ≥ 70% (spec §5), reported via the eval harness (M1.3).
 
-### M1.3 — Faithfulness/eval harness (G7, NFR) · L
+### M1.3 — Faithfulness/eval harness (G7, NFR) · L · ✅ DONE
 - `kb/eval.py`: (a) **entailment** — decompose `full` into claims, verify each against the cited
   source span (RAGAS-style, a *screen* given ~0.55 human agreement [grouse][grouse]);
   (b) **entity-trace** — static-extract code entities, verify alignment (ETF ~73% F1 [etf][etf]);
@@ -61,7 +61,7 @@ retrieval entry point we use to measure relevance.
 - **Exit:** harness runs in CI on the fixture KB; entailment ≥85% on seed summaries; metrics
   tracked over time.
 
-### M1.4 — Derived-fact invalidation (G6, FR-8) · M
+### M1.4 — Derived-fact invalidation (G6, FR-8) · M · ✅ DONE
 - Extend the dirty-set logic: on a changed file, also invalidate/re-emit the **call & xref edges**
   touching its symbols and mark dependent summaries dirty — not just the file's own facts
   ([Glean][glean]). `kb/incremental.py` (+`dirty_edges`, `dirty_dependents`).

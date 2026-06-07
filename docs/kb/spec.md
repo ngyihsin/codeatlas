@@ -215,9 +215,9 @@ Ranked by leverage on the **KB itself** (current scope). G-IDs are stable (refer
 | # | Gap | Why it matters | Evidence |
 |---|---|---|---|
 | ~~G5~~ ✅ | **L2 per-symbol summaries** (FR-4) — *done (M1.1)*: `--granularity symbol`, joined in MCP by symbol id, verified on ORT | symbol queries now get symbol-scoped answers | — |
-| **G7** | **No faithfulness/eval harness** (NFR) | can't prove grounding or track drift | [ETF][etf], [QAFactEval][qafe] |
+| ~~G7~~ ✅ | **Faithfulness/eval harness** — *done (M1.3)*: claim-decompose + per-claim entailment (`kb/eval.py`); real ORT: lint 100%, entailment 53% (a finding) | proves grounding accuracy, not just citation existence | [ETF][etf] |
 | **G4** | **Call graph is heuristic only** (FR-2) | "what calls this / blast radius" rides on the graph | [LocAgent][locagent]; precise tier = [scip-clang][scipclang] |
-| **G6** | **Derived-fact invalidation missing** (FR-8) | stale call edges/summaries → wrong answers | [Glean][glean] |
+| ~~G6~~ ✅ | **Derived-fact invalidation** — *done (M1.4)*: incremental L1 edges by caller-file ownership + `compute_dirty` cascade wired | stale edges/summaries → wrong answers | [Glean][glean] |
 | **G8** | **No human-review workflow/UI** for L2/L3 promotion | trust ladder is inert | 84% of SE researchers call human eval problematic ([survey][survey]) |
 | **G9** | **L3 recipes: 1 stub, keyword search** | tacit layer is the moat | [GraphRAG][graphrag] |
 | **G2** | **No tests index** (FR-3) | "what guards this code?" is a core KB query (and later, regression safety) | [regression][regress] |
