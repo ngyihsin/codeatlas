@@ -33,7 +33,7 @@ What already exists and is verified on real ONNX Runtime — the floor we build 
 **measurable**. These are the highest-leverage KB-internal gaps (G5, G7, G6) plus the generic
 retrieval entry point we use to measure relevance.
 
-### M1.1 — Per-symbol L2 summaries (G5, FR-4) · L
+### M1.1 — Per-symbol L2 summaries (G5, FR-4) · L · ✅ DONE
 - Move L2 leaves from file-level to **symbol-level**, budgeted by `importance` (full summary for
   top-N symbols/file; fold-only for the tail to bound cost). `kb/l2.py` (`build_leaf_prompt`
   takes a symbol range; orchestration iterates symbols, not files).

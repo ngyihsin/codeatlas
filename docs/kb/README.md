@@ -16,6 +16,7 @@ Read in order:
 | [**design.md**](design.md) | *How* — the five planes (ingest/knowledge/freshness/serving/consume), data contracts, retrieval routing, freshness engine, mapping to current code |
 | [**implement.md**](implement.md) | *The plan* — phased milestones with exit gates, sequenced by leverage on the KB (Phase F = deferred resolution loop) |
 | [**leverage.md**](leverage.md) | *Build vs. reuse* — per-gap decisions (REUSE/TARGET/PATTERN) from inspecting the actual projects (scip-clang, RAGAS, sqlite-vec, MCP SDK, Salsa/Glean…), with licenses and dependency cost |
+| [**phases.md**](phases.md) | *Phase plan, four-lens view* — each phase as what/why · how · expected results · validation, with exit-gate checklists |
 
 **Grounding.** Every load-bearing decision is backed by a June-2026 literature review (cited
 inline; contested findings flagged `⚠contested`) **and** an audit of the running code in

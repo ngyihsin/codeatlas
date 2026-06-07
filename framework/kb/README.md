@@ -15,7 +15,7 @@ It is an **ETL pipeline, not a doc set** — judged on token cost + freshness.
 | **L1 op registry → `ops.jsonl`** (the spec's #1 artifact) | `kb/l1.py` | `python -m kb.l1 build <code> <out>` | ✅ verified on real ONNX Runtime (378 ops / 123 distinct, 7 macros) |
 | L1 symbols / call graph / importance / churn | `kb/l1.py` | same | ✅ `symbols.jsonl`, `edges.jsonl` (xref:partial), `module_map.md` |
 | **L2 evidence lint** (make bluffing impossible) | `kb/lint.py` | `python -m kb.lint <summaries> --code <root>` | ✅ rejects fold>20, code-claim-without-`[Lxx]`, out-of-range refs |
-| **L2 summary generator** (spawns an AI agent per node) | `kb/l2.py` | `python -m kb.l2 build <l1_dir> <code> <out> --backend claude` | ✅ real run over ONNX Runtime; lint runs as a self-repair loop; un-fixable bluffs quarantined |
+| **L2 summary generator** (spawns an AI agent per node) | `kb/l2.py` | `python -m kb.l2 build <l1_dir> <code> <out> --backend claude [--granularity symbol --top-n N]` | ✅ real run over ONNX Runtime; file- and **per-symbol** summaries; lint self-repair loop; bluffs quarantined |
 | **Incremental hash + fold firewall** | `kb/incremental.py` | `python -m kb.incremental demo` | ✅ recompute only the dirty sub-tree; cascade stops at stable folds |
 | **MCP retrieval server** (token-budgeted) | `kb/mcp_server.py` | `KB_DIR=<out> python -m kb.mcp_server` | ✅ `find_symbol` (joins L2)/`find_op`/`get_summary`/`trace_callers`/`find_recipe`/`get_recipe_steps`/`what_changed`/`review_status` |
 | **L3 recipe / decision-tree** | `fixtures/recipes/*.yaml` + `find_recipe` | via MCP | ◐ schema + stub (extraction needs PRs/humans — prompts in the spec appendices) |
@@ -86,7 +86,8 @@ python -m kb.l1 build  <codebase> <out_dir>     # symbols/edges/ops/module_map
 python -m kb.l2 build  <out_dir> <codebase> <l2_dir> --backend claude   # generate summaries
 python -m kb.lint      summaries.jsonl --code <codebase> --symbols <out_dir>/symbols.jsonl
 KB_DIR=<out_dir> python -m kb.mcp_server        # then speak MCP JSON-RPC on stdin
-python -m pytest -q                             # 16 tests
+python -m kb.l2 build  <out_dir> <codebase> <l2_dir> --backend claude --granularity symbol
+python -m pytest -q                             # 18 tests
 ```
 
 ## Verification (production-quality gate)

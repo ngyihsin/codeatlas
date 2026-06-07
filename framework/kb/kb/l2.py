@@ -210,6 +210,35 @@ def build_synthesis_prompt(name: str, children: list[dict]) -> str:
     )
 
 
+_SYMBOL_KINDS = ("function", "method", "class", "struct")
+
+
+def symbol_spans(file_syms: list[dict], total_lines: int) -> dict[str, tuple[int, int]]:
+    """Per-symbol source span [start, end] using the same next-def heuristic as the
+    call graph: a definition owns lines from its start to just before the next def."""
+    ss = sorted(file_syms, key=lambda s: s.get("line", 0))
+    spans: dict[str, tuple[int, int]] = {}
+    for i, s in enumerate(ss):
+        start = max(1, int(s.get("line", 1)))
+        end = (int(ss[i + 1]["line"]) - 1) if i + 1 < len(ss) else total_lines
+        spans[s["id"]] = (start, max(start, end))
+    return spans
+
+
+def build_symbol_prompt(rel: str, name: str, kind: str, source: str,
+                        start: int, end: int) -> str:
+    lines = source.splitlines()
+    end = min(end, len(lines))
+    numbered = "\n".join(f"{i:>4}| {lines[i - 1]}" for i in range(start, end + 1))
+    return (
+        f"Summarize the {kind} `{name}` defined in {rel} (lines {start}-{end}).\n\n"
+        + _SCHEMA_RULES.format(level="code")
+        + 'Because evidence_level is "code", "full" MUST contain at least one [Lnn] '
+        'citation to a real line shown below (line numbers are the file\'s own).\n\n'
+        f"---- {rel}::{name} ----\n{numbered}\n---- end ----"
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Parse + generate-with-repair (the lint control loop)                        #
 # --------------------------------------------------------------------------- #
@@ -289,14 +318,22 @@ def _iter_source_files(code_root: str, only: str | None, max_bytes: int):
 def build(l1_dir: str, code_root: str, out_dir: str, *, backend: Backend,
           limit: int | None = None, only: str | None = None,
           max_bytes: int = 20000, attempts: int = 3,
-          use_incremental: bool = True) -> dict:
+          use_incremental: bool = True, granularity: str = "file",
+          top_n: int = 8) -> dict:
     os.makedirs(out_dir, exist_ok=True)
-    # symbol names (for the lint's backtick-symbol check) from L1, if present
+    # symbol records from L1, if present: names feed the lint's backtick check; full
+    # records (with importance + line) feed per-symbol L2 (granularity="symbol").
     symbol_names: set[str] | None = None
+    symbols: list[dict] = []
     sp = os.path.join(l1_dir, "symbols.jsonl")
     if os.path.isfile(sp):
-        symbol_names = {json.loads(l).get("name")
-                        for l in open(sp, encoding="utf-8") if l.strip()}
+        symbols = [json.loads(l) for l in open(sp, encoding="utf-8") if l.strip()]
+        symbol_names = {s.get("name") for s in symbols}
+    syms_by_path: dict[str, list[dict]] = {}
+    if granularity == "symbol":
+        for s in symbols:
+            if s.get("kind") in _SYMBOL_KINDS:
+                syms_by_path.setdefault(s.get("path"), []).append(s)
 
     cache_path = os.path.join(out_dir, "l2_cache.json")
     cache = {}
@@ -336,6 +373,41 @@ def build(l1_dir: str, code_root: str, out_dir: str, *, backend: Backend,
         clean.append(s)
         children_by_dir.setdefault(os.path.dirname(rel) or ".", []).append(
             {"path": rel, "fold": s.get("fold", ""), "preview": s.get("preview", "")})
+
+        # ---- per-symbol leaves (granularity="symbol"): top-N by importance ----
+        # The file summary above stays (feeds the module tree + is the fallback for
+        # the long tail); important symbols additionally get a symbol-scoped summary.
+        if granularity == "symbol" and rel in syms_by_path:
+            file_syms = syms_by_path[rel]
+            spans = symbol_spans(file_syms, source.count("\n") + 1)
+            ranked = sorted(file_syms, key=lambda x: -x.get("importance", 0.0))[:top_n]
+            for sym in ranked:
+                start, end = spans[sym["id"]]
+                sh = incremental.input_hash("\n".join(
+                    source.splitlines()[start - 1:end]), [])
+                cs = cache.get(sym["id"])
+                if use_incremental and cs and cs.get("hash") == sh:
+                    ss = cs["summary"]
+                    stats["cached"] += 1
+                else:
+                    r = generate_summary(
+                        build_symbol_prompt(rel, sym["name"], sym.get("kind", ""),
+                                            source, start, end),
+                        backend=backend, ident=sym["id"], path=rel,
+                        source_lines=source.count("\n") + 1,
+                        symbol_names=symbol_names, attempts=attempts)
+                    ss = r.summary
+                    ss["scope"] = "symbol"
+                    if r.status == "clean":
+                        stats["generated"] += 1
+                    else:
+                        stats["quarantined"] += 1
+                        quarantine.append({**ss, "_errors": r.errors})
+                        new_cache[sym["id"]] = {"hash": sh, "summary": ss}
+                        continue
+                ss["scope"] = "symbol"
+                new_cache[sym["id"]] = {"hash": sh, "summary": ss}
+                clean.append(ss)
 
     # ---- synthesis: one summary per directory, from child previews ----
     # Firewall keys on previews (sentences), not 20-char folds: a behavior change
@@ -405,12 +477,15 @@ def main(argv: list[str]) -> int:
     b.add_argument("--max-bytes", type=int, default=20000)
     b.add_argument("--attempts", type=int, default=3)
     b.add_argument("--timeout", type=int, default=120)
+    b.add_argument("--granularity", default="file", choices=["file", "symbol"])
+    b.add_argument("--top-n", type=int, default=8, help="symbols/file to summarize (symbol mode)")
     b.add_argument("--no-incremental", action="store_true")
     a = ap.parse_args(argv)
     if a.subcmd == "build":
         report = build(a.l1_dir, a.code_root, a.out_dir, backend=_make_backend(a),
                        limit=a.limit, only=a.only, max_bytes=a.max_bytes,
-                       attempts=a.attempts, use_incremental=not a.no_incremental)
+                       attempts=a.attempts, use_incremental=not a.no_incremental,
+                       granularity=a.granularity, top_n=a.top_n)
         print(json.dumps(report))
         return 0
     return 2

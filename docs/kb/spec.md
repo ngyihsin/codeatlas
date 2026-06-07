@@ -214,7 +214,7 @@ Ranked by leverage on the **KB itself** (current scope). G-IDs are stable (refer
 
 | # | Gap | Why it matters | Evidence |
 |---|---|---|---|
-| **G5** | **L2 is file-level, not per-symbol** (FR-4) | symbol queries get whole-file answers — core retrieval quality | — |
+| ~~G5~~ ✅ | **L2 per-symbol summaries** (FR-4) — *done (M1.1)*: `--granularity symbol`, joined in MCP by symbol id, verified on ORT | symbol queries now get symbol-scoped answers | — |
 | **G7** | **No faithfulness/eval harness** (NFR) | can't prove grounding or track drift | [ETF][etf], [QAFactEval][qafe] |
 | **G4** | **Call graph is heuristic only** (FR-2) | "what calls this / blast radius" rides on the graph | [LocAgent][locagent]; precise tier = [scip-clang][scipclang] |
 | **G6** | **Derived-fact invalidation missing** (FR-8) | stale call edges/summaries → wrong answers | [Glean][glean] |

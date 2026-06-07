@@ -76,8 +76,9 @@ class KB:
         rows = []
         for s in hits[:BUDGET]:
             anchor = f"{s['path']} → {s['name']}"
-            # L2 summary for the symbol's file (file-level), if generated yet.
-            summ = self.summary_by_path.get(s.get("path"))
+            # Prefer a symbol-scoped L2 summary (joined by symbol id); fall back to the
+            # file-level summary; fall back to the bare L1 signature if neither exists.
+            summ = self.summary_by_id.get(s.get("id")) or self.summary_by_path.get(s.get("path"))
             if detail == "fold":
                 row = {"anchor": anchor, "kind": s.get("kind")}
                 if summ:
@@ -87,9 +88,9 @@ class KB:
                 row = {"anchor": anchor, "kind": s.get("kind"),
                        "signature": s.get("signature", ""),
                        "importance": s.get("importance", 0)}
-                if summ:  # the generated, lint-verified explanation (file scope)
+                if summ:  # the generated, lint-verified explanation
                     row["summary"] = summ.get("preview")
-                    row["scope"] = "file"
+                    row["scope"] = summ.get("scope", "file")
                     row["evidence_level"] = summ.get("evidence_level")
                     row["confidence"] = summ.get("confidence", "draft")
                 rows.append(row)

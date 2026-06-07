@@ -275,7 +275,8 @@ supervision.
 | summary firewall | ✅ preview-keyed | `kb/incremental.py` |
 | MCP server (8 tools, joined) | ✅ | `kb/mcp_server.py` |
 | L3 recipe schema + find_recipe | ◐ stub + keyword | `fixtures/recipes/`, `kb/mcp_server.py` |
-| per-symbol L2, eval/entailment harness, scip-clang tier, derived-fact invalidation, tests index, review workflow, L3 semantic | ❌ current scope | *to build — see `implement.md`* |
+| **per-symbol L2 + MCP symbol-id join (M1.1)** | ✅ verified on ORT | `kb/l2.py` (`--granularity symbol`), `kb/mcp_server.py` |
+| eval/entailment harness, scip-clang tier, derived-fact invalidation, tests index, review workflow, L3 semantic | ❌ current scope | *to build — see `implement.md`* |
 | issue→code loop (localize/repair/validate), prior-fix memory, Jira adapter | ⏸ deferred | *future consumer — §7* |
 
 ---

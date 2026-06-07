@@ -225,6 +225,38 @@ def test_l2_summaries_reach_agent_via_mcp(tmp_path):
     assert "error" in kb.get_summary("does/not/exist.cc")
 
 
+@pytest.mark.skipif(not HAS_CTAGS, reason="universal-ctags not installed")
+def test_l2_per_symbol_summaries_join_in_mcp(tmp_path):
+    """M1.1: symbol-granularity L2 produces symbol-scoped summaries that find_symbol
+    surfaces joined by symbol id (not the whole-file summary)."""
+    kbdir = tmp_path / "kb"
+    l1.build(FIX, str(kbdir))
+    rep = l2.build(str(kbdir), FIX, str(kbdir),
+                   backend=l2.MockBackend(_clean_reply),
+                   granularity="symbol", top_n=3)
+    assert rep["generated"] >= 1
+    sums = [json.loads(l) for l in open(kbdir / "summaries.jsonl")]
+    sym_sums = [s for s in sums if s.get("scope") == "symbol"]
+    assert sym_sums, "no symbol-scoped summaries produced"
+    assert all(s["id"].count(":") >= 2 for s in sym_sums)     # path:name:line ids
+    # what landed is lint-clean against the real file
+    for s in sym_sums:
+        n = sum(1 for _ in open(os.path.join(FIX, s["path"]), errors="ignore"))
+        assert lint.lint_summary(s, source_lines=n) == []
+    # MCP joins the symbol summary by id, reporting scope=symbol
+    kb = KB(str(kbdir))
+    rows = kb.find_symbol("Compute", detail="preview")
+    assert any(r.get("scope") == "symbol" and r.get("summary") for r in rows)
+
+
+def test_l2_symbol_spans_partition_file():
+    syms = [{"id": "f:a:1", "line": 1}, {"id": "f:b:10", "line": 10},
+            {"id": "f:c:20", "line": 20}]
+    spans = l2.symbol_spans(syms, total_lines=30)
+    assert spans["f:a:1"] == (1, 9) and spans["f:b:10"] == (10, 19)
+    assert spans["f:c:20"] == (20, 30)            # last symbol runs to EOF
+
+
 def test_mcp_find_symbol_without_l2_falls_back(tmp_path):
     """No summaries.jsonl yet -> find_symbol still works on L1 alone (no crash)."""
     kbdir = tmp_path / "kb"
