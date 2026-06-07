@@ -218,7 +218,7 @@ Ranked by leverage on the **KB itself** (current scope). G-IDs are stable (refer
 | ~~G7~~ ✅ | **Faithfulness/eval harness** — *done (M1.3)*: claim-decompose + per-claim entailment (`kb/eval.py`); real ORT: lint 100%, entailment 53% (a finding) | proves grounding accuracy, not just citation existence | [ETF][etf] |
 | **G4** | **Call graph is heuristic only** (FR-2) | "what calls this / blast radius" rides on the graph | [LocAgent][locagent]; precise tier = [scip-clang][scipclang] |
 | ~~G6~~ ✅ | **Derived-fact invalidation** — *done (M1.4)*: incremental L1 edges by caller-file ownership + `compute_dirty` cascade wired | stale edges/summaries → wrong answers | [Glean][glean] |
-| **G8** | **No human-review workflow/UI** for L2/L3 promotion | trust ladder is inert | 84% of SE researchers call human eval problematic ([survey][survey]) |
+| ~~G8~~ ✅ | **Human-review workflow** — *done (M2.2)*: `kb/review.py` promote ladder (draft→reviewed→battle-tested) + evidence anchors | turns the trust ladder from inert to operational | [survey][survey] |
 | **G9** | **L3 recipes: 1 stub, keyword search** | tacit layer is the moat | [GraphRAG][graphrag] |
 | ~~G2~~ ✅ | **Tests index** — *done (M2.3)*: `tests.jsonl` + `find_tests`; real ORT links Clip→clip_test.cc | "what guards this code?" (and later, regression safety) | [regression][regress] |
 | **G10** | **MCP: no pagination/resources, single transport** | budget + scale | [MCP spec][mcp] |

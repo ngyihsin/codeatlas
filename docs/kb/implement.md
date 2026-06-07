@@ -92,7 +92,7 @@ claim.*
 - **Exit:** on an ORT build, a known virtual-dispatch call resolves to ≥1 precise edge;
   `relevant_code` accuracy on the decontaminated set improves vs M1.2 (report delta).
 
-### M2.2 — Human-review workflow (G8) · M
+### M2.2 — Human-review workflow (G8) · M · ✅ DONE
 - Promotion pipeline: `draft → reviewed → battle-tested`. A reviewer CLI/endpoint lists a
   module's drafts with their evidence anchors, accepts/edits/rejects, and stamps `owner` +
   `reviewed_at`. `review_status` already surfaces state. Promotion of an L3 recipe to

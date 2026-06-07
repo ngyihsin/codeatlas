@@ -173,12 +173,14 @@ class KB:
                 for s in self.symbols if s.get("name") == symbol][:BUDGET]
 
     def review_status(self, symbol: str) -> list[dict]:
-        # Reflect the real L2 review state when a summary exists; else mechanical L1.
+        # Reflect the real L2 review state. Match by name, qualified-name leaf, or id;
+        # prefer the symbol-scoped summary (by id) over the file summary (by path).
         out = []
         for s in self.symbols:
-            if s.get("name") != symbol:
+            nm = s.get("name", "")
+            if symbol not in (nm, nm.split("::")[-1], s.get("id")):
                 continue
-            summ = self.summary_by_path.get(s.get("path"))
+            summ = self.summary_by_id.get(s.get("id")) or self.summary_by_path.get(s.get("path"))
             status = (f"L2 {summ.get('confidence', 'draft')} ({summ.get('evidence_level')})"
                       if summ else "mechanical (L1)")
             out.append({"anchor": f"{s['path']} → {s['name']}", "status": status,

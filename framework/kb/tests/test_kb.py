@@ -9,6 +9,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from kb import l1, lint, incremental, l2, retrieve          # noqa: E402
 from kb import eval as kbeval                               # noqa: E402
+from kb import review                                       # noqa: E402
 from kb.mcp_server import KB, handle                        # noqa: E402
 
 FIX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "mini-runtime")
@@ -88,6 +89,48 @@ def test_firewall_stops_cascade():
     assert incremental.compute_dirty({"c"}, edges, fold_changed={"c"}) == {"b", "c"}
     # full cascade when every fold changes
     assert incremental.compute_dirty({"c"}, edges, fold_changed={"a", "b", "c"}) == {"a", "b", "c"}
+
+
+# ----------------------------------------------------- M2.2 human-review workflow
+def test_review_promote_ladder_and_rules():
+    sums = [{"id": "a.cc::F", "fold": "f", "full": "does x [L3]", "path": "a.cc",
+             "confidence": "draft"}]
+    rec = review.promote(sums, "a.cc::F", "reviewed", owner="team-cpu", today="2026-06-07")
+    assert rec["confidence"] == "reviewed" and rec["owner"] == "team-cpu"
+    assert rec["reviewed_at"] == "2026-06-07"
+    # battle-tested needs a ticket; missing -> error
+    with pytest.raises(ValueError):
+        review.promote(sums, "a.cc::F", "battle-tested", owner="x")
+    rec2 = review.promote(sums, "a.cc::F", "battle-tested", owner="x", ticket="JIRA-9")
+    assert rec2["confidence"] == "battle-tested" and rec2["ticket"] == "JIRA-9"
+    with pytest.raises(KeyError):
+        review.promote(sums, "missing", "reviewed", owner="x")
+
+
+def test_review_evidence_anchors_and_listing():
+    sums = [{"id": "a.cc::F", "fold": "f", "full": "y [L3] and [L7-9]", "path": "a.cc",
+             "confidence": "draft", "scope": "symbol"},
+            {"id": "b.cc::G", "fold": "g", "full": "z [L1]", "path": "b.cc",
+             "confidence": "reviewed"}]
+    assert review.evidence_anchors(sums[0]) == ["a.cc:L3", "a.cc:L7-9"]
+    drafts = review.list_drafts(sums, status="draft")
+    assert len(drafts) == 1 and drafts[0]["id"] == "a.cc::F"
+
+
+@pytest.mark.skipif(not HAS_CTAGS, reason="universal-ctags not installed")
+def test_review_promotion_flips_mcp_review_status(tmp_path):
+    kbdir = tmp_path / "kb"
+    l1.build(FIX, str(kbdir))
+    l2.build(str(kbdir), FIX, str(kbdir), backend=l2.MockBackend(_clean_reply),
+             granularity="symbol", top_n=3)
+    sums = review._load(str(kbdir))
+    sym = next(s for s in sums if s.get("scope") == "symbol")
+    review.promote(sums, sym["id"], "reviewed", owner="team-cpu")
+    review._save(str(kbdir), sums)
+    kb = KB(str(kbdir))                                   # reload
+    name = sym["id"].split(":")[-2] if sym["id"].count(":") >= 2 else sym["id"]
+    statuses = [r["status"] for r in kb.review_status(name)]
+    assert any(s.startswith("L2 reviewed") for s in statuses)
 
 
 # ----------------------------------------------------------- M2.3 tests index
