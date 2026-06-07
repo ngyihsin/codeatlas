@@ -240,6 +240,41 @@ def git_churn(code_root: str) -> dict[str, dict]:
     return info
 
 
+# ------------------------------------------------------------------------- tests
+_TEST_MACRO = re.compile(r"\bTEST(?:_[FP])?\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)")
+_IDENT = re.compile(r"[A-Za-z_]\w{2,}")
+
+
+def _is_test_file(rel: str) -> bool:
+    b = os.path.basename(rel).lower()
+    return "test" in b or "/test" in ("/" + rel.lower()) or "gtest" in b
+
+
+def extract_tests(code_root: str, symbols: list[Symbol], ops: list[Op]) -> list[dict]:
+    """Map symbol/op -> the tests that exercise it (FR-3). Heuristic: a test file
+    'covers' a project symbol/op whose name it references. Coarse but the question it
+    answers — 'what guards this code?' — is load-bearing for safe change."""
+    names = {s.name.split("::")[-1] for s in symbols if s.kind in CODE_KINDS
+             and len(s.name) > 2}
+    op_names = {o.op_name for o in ops}
+    targets = names | op_names
+    rows, seen = [], set()
+    for full in _iter_code_files(code_root):
+        rel = os.path.relpath(full, code_root)
+        if not _is_test_file(rel):
+            continue
+        text = _read(full)
+        suites = _TEST_MACRO.findall(text)
+        anchor = rel + (f"::{suites[0][0]}.{suites[0][1]}" if suites else "")
+        for nm in set(_IDENT.findall(text)) & targets:
+            key = (nm, anchor)
+            if key not in seen:
+                seen.add(key)
+                rows.append({"name": nm, "test": anchor, "path": rel, "kind": "regression"})
+    rows.sort(key=lambda r: (r["name"], r["test"]))
+    return rows
+
+
 # ----------------------------------------------------- incremental edge ownership
 def file_hashes(code_root: str) -> dict[str, str]:
     """Per-file content hash (Bazel/Turborepo content-addressing) for change detection."""
@@ -306,14 +341,16 @@ def build(code_root: str, out_dir: str, patterns_path: str | None = None) -> dic
         if c:
             s.churn, s.last_author, s.last_modified = c["churn"], c["last_author"], c["last_modified"]
     ops = extract_ops(code_root, load_patterns(patterns_path))
+    tests = extract_tests(code_root, symbols, ops)
 
     _write_jsonl(os.path.join(out_dir, "symbols.jsonl"), (asdict(s) for s in symbols))
     _write_jsonl(os.path.join(out_dir, "edges.jsonl"), edges)
     _write_jsonl(os.path.join(out_dir, "ops.jsonl"), (asdict(o) for o in ops))
+    _write_jsonl(os.path.join(out_dir, "tests.jsonl"), tests)
     _write_module_map(os.path.join(out_dir, "module_map.md"), code_root, symbols, ops)
     json.dump({"file_hashes": hashes}, open(cache_path, "w", encoding="utf-8"))
     return {"symbols": len(symbols), "edges": len(edges), "ops": len(ops),
-            "mode": mode, "changed": len(changed), "out": out_dir}
+            "tests": len(tests), "mode": mode, "changed": len(changed), "out": out_dir}
 
 
 def _write_module_map(path: str, code_root: str, symbols: list[Symbol], ops: list[Op]) -> None:

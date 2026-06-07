@@ -90,6 +90,20 @@ def test_firewall_stops_cascade():
     assert incremental.compute_dirty({"c"}, edges, fold_changed={"a", "b", "c"}) == {"a", "b", "c"}
 
 
+# ----------------------------------------------------------- M2.3 tests index
+@pytest.mark.skipif(not HAS_CTAGS, reason="universal-ctags not installed")
+def test_tests_index_and_find_tests(tmp_path):
+    out = tmp_path / "kb"
+    rep = l1.build(FIX, str(out))
+    assert rep["tests"] >= 1                          # the fixture test file is indexed
+    kb = KB(str(out))
+    hits = kb.find_tests("AddCompute")
+    assert hits and any("elementwise_test" in h["test"] for h in hits)
+    assert all(h["kind"] == "regression" for h in hits)
+    # qualified name resolves via its leaf
+    assert kb.find_tests("onnxruntime::AddCompute")
+
+
 # ------------------------------------------------- M1.4 derived-fact invalidation
 @pytest.mark.skipif(not HAS_CTAGS, reason="universal-ctags not installed")
 def test_rebuild_edges_equals_full_when_disk_unchanged():

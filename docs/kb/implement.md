@@ -100,7 +100,7 @@ claim.*
 - **Exit:** an RD can promote a module's L2 drafts in ≤10 min (spec target); a promoted summary
   flips `review_status` to `reviewed`.
 
-### M2.3 — Tests index (G2, FR-3) · M
+### M2.3 — Tests index (G2, FR-3) · M · ✅ DONE
 - Build `tests.jsonl`: parse test files with the existing ctags/macro machinery to map
   `symbol/op → test`. `kb/l1.py` (+`extract_tests`). New MCP tool `find_tests(symbol)`.
 - **Exit:** on real ORT, `find_tests("Clip_6::Compute")` returns the Clip test(s); test asserts

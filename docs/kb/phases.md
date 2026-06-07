@@ -78,7 +78,7 @@ Gaps: **G4, G8, G2**.
 - [ ] M2.1 a virtual-dispatch call resolves to ≥1 `xref:precise` edge on an ORT build
 - [ ] M2.1 `relevant_code` accuracy improves vs Phase-1 (delta reported)
 - [ ] M2.2 RD promotes a module's drafts in ≤10 min; `review_status` flips to `reviewed`
-- [ ] M2.3 `find_tests` resolves a known symbol→test link on real ORT
+- [x] M2.3 `find_tests` resolves a known symbol→test link on real ORT ✅ (clip_test.cc::MathOpTest.Clip_6)
 
 ---
 

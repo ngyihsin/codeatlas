@@ -40,6 +40,7 @@ class KB:
         self.symbols = self._jsonl("symbols.jsonl")
         self.edges = self._jsonl("edges.jsonl")
         self.ops = self._jsonl("ops.jsonl")
+        self.tests = self._jsonl("tests.jsonl")
         self.recipes = self._recipes()
         # L2: join generated summaries to symbols/files by path (seam fix).
         self.summaries = self._jsonl("summaries.jsonl")
@@ -115,6 +116,13 @@ class KB:
         # Direct access to a file/module L2 explanation (e.g. "math/clip.cc" or "module:math").
         s = self.summary_by_path.get(path) or self.summary_by_id.get(path)
         return s or {"error": f"no L2 summary for {path!r} (not generated yet)"}
+
+    def find_tests(self, symbol: str) -> list[dict]:
+        # Which tests guard a symbol/op? (the regression set for safe change)
+        leaf = symbol.split("::")[-1]
+        hits = [t for t in self.tests if t.get("name") in (symbol, leaf)]
+        return [{"test": t["test"], "guards": t["name"], "kind": t.get("kind", "regression")}
+                for t in hits[:BUDGET]]
 
     def relevant_code(self, query: str, k: int = 5) -> list[dict]:
         # Hybrid NL→code retrieval (lexical + call-graph expansion + importance).
@@ -193,6 +201,8 @@ TOOLS = [
      "inputSchema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
     {"name": "get_summary", "description": "Get the L2 explanation for a file or module path.",
      "inputSchema": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
+    {"name": "find_tests", "description": "Tests that guard a symbol/op (the regression set).",
+     "inputSchema": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]}},
     {"name": "find_recipe", "description": "Find an L3 recipe for a task.",
      "inputSchema": {"type": "object", "properties": {"task": {"type": "string"}}, "required": ["task"]}},
     {"name": "get_recipe_steps", "description": "Full recipe / decision tree by id.",
