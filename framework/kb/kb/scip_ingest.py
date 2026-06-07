@@ -98,6 +98,10 @@ def _write(out_dir: str, symbols: list[dict], edges: list[dict]) -> dict:
 
 def build(code_root: str, compdb: str, out_dir: str) -> dict:
     """Run scip-clang + scip, then ingest. Requires both binaries on PATH."""
+    if not os.path.isdir(code_root):
+        raise SystemExit(f"code_root not found: {code_root}")
+    if not os.path.isfile(compdb):
+        raise SystemExit(f"compile_commands.json not found: {compdb}")
     if not shutil.which("scip-clang"):
         raise SystemExit("scip-clang not on PATH — install the prebuilt binary "
                          "(x86_64 Linux) or use `from-json` with a precomputed index")

@@ -81,7 +81,7 @@ claim.*
 
 ## Phase 2 — Graph precision & human trust
 
-### M2.1 — Precise call-graph tier via scip-clang (G4, FR-2) · XL · ◐ ingest done (live run needs a build)
+### M2.1 — Precise call-graph tier via scip-clang (G4, FR-2) · XL · ✅ live-validated (small build; ORT-scale pending)
 - Add an optional ingest: if `compile_commands.json` is present, run **scip-clang**, convert SCIP
   occurrences → `edges.jsonl` tagged `xref:precise` (macros + types resolved [scipclang][scipclang]).
   `kb/scip_ingest.py`. Falls back to Tier-A heuristic when absent.

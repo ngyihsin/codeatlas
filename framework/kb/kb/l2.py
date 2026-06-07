@@ -264,8 +264,14 @@ class GenResult:
 
 def generate_summary(prompt: str, *, backend: Backend, ident: str, path: str | None,
                      source_lines: int | None, symbol_names: set[str] | None,
-                     attempts: int = 3) -> GenResult:
-    """Generate, lint, and self-repair up to `attempts` times. Lint is the loop."""
+                     attempts: int = 3, entail_source: str | None = None,
+                     entail_samples: int = 1) -> GenResult:
+    """Generate, lint, and self-repair up to `attempts` times. Lint is the loop.
+
+    If `entail_source` is given, a second gate runs after lint: each cited claim is
+    checked for entailment against its cited lines (kb.eval); unsupported claims are fed
+    back so only claims actually supported by their citations ship. Raises entailment by
+    construction at the cost of extra LLM calls."""
     p, last, errs = prompt, {}, ["no attempt made"]
     for n in range(1, attempts + 1):
         raw = backend.generate(p, system=_SYSTEM)
@@ -281,6 +287,17 @@ def generate_summary(prompt: str, *, backend: Backend, ident: str, path: str | N
             s["path"] = path
         last = s
         errs = lint_summary(s, source_lines, symbol_names)
+        if not errs and entail_source is not None:
+            from . import eval as _eval        # lazy: avoid import cycle (eval imports l2)
+            bad = _eval.unsupported_claims(str(s.get("full", "")), entail_source,
+                                           backend, entail_samples)
+            if bad:
+                errs = [f"unsupported claim: {b}" for b in bad]
+                p = (prompt + "\n\nThese claims are NOT entailed by the lines they cite:\n"
+                     + "\n".join(f"  - {b}" for b in bad)
+                     + "\nCite the exact supporting line for each, or weaken/remove the "
+                       "claim. Return corrected JSON.")
+                continue
         if not errs:
             s.setdefault("confidence", "draft")
             return GenResult(s, "clean", n)
@@ -319,7 +336,7 @@ def build(l1_dir: str, code_root: str, out_dir: str, *, backend: Backend,
           limit: int | None = None, only: str | None = None,
           max_bytes: int = 20000, attempts: int = 3,
           use_incremental: bool = True, granularity: str = "file",
-          top_n: int = 8) -> dict:
+          top_n: int = 8, entail: bool = False) -> dict:
     os.makedirs(out_dir, exist_ok=True)
     # symbol records from L1, if present: names feed the lint's backtick check; full
     # records (with importance + line) feed per-symbol L2 (granularity="symbol").
@@ -360,7 +377,8 @@ def build(l1_dir: str, code_root: str, out_dir: str, *, backend: Backend,
             res = generate_summary(
                 build_leaf_prompt(rel, source), backend=backend, ident=rel,
                 path=rel, source_lines=source.count("\n") + 1,
-                symbol_names=symbol_names, attempts=attempts)
+                symbol_names=symbol_names, attempts=attempts,
+                entail_source=(source if entail else None))
             s = res.summary
             if res.status == "clean":
                 stats["generated"] += 1
@@ -395,7 +413,8 @@ def build(l1_dir: str, code_root: str, out_dir: str, *, backend: Backend,
                                             source, start, end),
                         backend=backend, ident=sym["id"], path=rel,
                         source_lines=source.count("\n") + 1,
-                        symbol_names=symbol_names, attempts=attempts)
+                        symbol_names=symbol_names, attempts=attempts,
+                        entail_source=(source if entail else None))
                     ss = r.summary
                     ss["scope"] = "symbol"
                     if r.status == "clean":
@@ -479,13 +498,15 @@ def main(argv: list[str]) -> int:
     b.add_argument("--timeout", type=int, default=120)
     b.add_argument("--granularity", default="file", choices=["file", "symbol"])
     b.add_argument("--top-n", type=int, default=8, help="symbols/file to summarize (symbol mode)")
+    b.add_argument("--entail", action="store_true",
+                   help="gate each summary on per-claim entailment (extra LLM calls)")
     b.add_argument("--no-incremental", action="store_true")
     a = ap.parse_args(argv)
     if a.subcmd == "build":
         report = build(a.l1_dir, a.code_root, a.out_dir, backend=_make_backend(a),
                        limit=a.limit, only=a.only, max_bytes=a.max_bytes,
                        attempts=a.attempts, use_incremental=not a.no_incremental,
-                       granularity=a.granularity, top_n=a.top_n)
+                       granularity=a.granularity, top_n=a.top_n, entail=a.entail)
         print(json.dumps(report))
         return 0
     return 2

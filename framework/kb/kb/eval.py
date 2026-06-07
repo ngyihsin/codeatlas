@@ -55,12 +55,31 @@ def _cited_source(code_root: str, rel_path: str,
         lines = open(p, encoding="utf-8", errors="ignore").read().splitlines()
     except OSError:
         return ""
+    return cited_from_text("\n".join(lines), ranges)
+
+
+def cited_from_text(source_text: str, ranges: list[tuple[int, int]]) -> str:
+    """The cited lines (numbered) from in-memory source — used by the L2 entailment gate."""
+    lines = source_text.splitlines()
     chunks = []
     for lo, hi in ranges:
         for n in range(lo, min(hi, len(lines)) + 1):
             if 1 <= n <= len(lines):
                 chunks.append(f"{n:>4}| {lines[n - 1]}")
     return "\n".join(chunks)
+
+
+def unsupported_claims(full: str, source_text: str, backend: Backend,
+                       samples: int = 1) -> list[str]:
+    """Claims in `full` whose cited lines do NOT entail them (the L2 gate's input)."""
+    bad = []
+    for sent, ranges in split_claims(full):
+        cited = cited_from_text(source_text, ranges)
+        if not cited:
+            continue
+        if entail_claim(backend, sent, cited, samples)["verdict"] != "entailed":
+            bad.append(sent)
+    return bad
 
 
 def _entail_once(backend: Backend, claim: str, cited: str) -> str:

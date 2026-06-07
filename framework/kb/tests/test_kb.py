@@ -199,6 +199,27 @@ def test_scip_precise_edges_take_precedence_in_mcp(tmp_path):
     assert len(ab) == 1 and ab[0]["xref"] == "precise"     # precise wins, no duplicate
 
 
+@pytest.mark.skipif(not (shutil.which("scip-clang") and shutil.which("scip")),
+                    reason="scip-clang/scip not installed")
+def test_scip_clang_live_pipeline(tmp_path):
+    import subprocess
+    d = tmp_path
+    (d / "calc.cc").write_text(
+        "int add(int a,int b){return a+b;}\n"
+        "int compute(int x){return add(x,2);}\n"
+        "int main(){return compute(3);}\n")
+    (d / "compile_commands.json").write_text(json.dumps(
+        [{"directory": str(d), "file": "calc.cc",
+          "arguments": ["clang++", "-std=c++17", "-c", "calc.cc"]}]))
+    subprocess.run(["scip-clang", "--compdb-path=compile_commands.json"],
+                   cwd=str(d), check=True, capture_output=True)
+    j = subprocess.run(["scip", "print", "--json", str(d / "index.scip")],
+                       capture_output=True, text=True, check=True).stdout
+    _, edges = scip_ingest.parse_index(json.loads(j))
+    assert any("compute" in e["caller_id"] and "add" in e["callee_id"] for e in edges)
+    assert edges and all(e["xref"] == "precise" for e in edges)
+
+
 def test_scip_build_without_binary_is_graceful():
     with pytest.raises(SystemExit):           # scip-clang not on PATH -> clear error
         scip_ingest.build("/nonexistent", "/nope.json", "/tmp/none")
@@ -596,6 +617,37 @@ def test_eval_self_consistency_majority():
     be = l2.MockBackend(lambda p, a: '{"verdict":"%s"}' % next(votes))
     res = kbeval.entail_claim(be, "claim", "  1| code", samples=3)
     assert res["verdict"] == "entailed" and abs(res["confidence"] - 2 / 3) < 1e-9
+
+
+def test_l2_entailment_gate_rejects_then_repairs(tmp_path):
+    # generation always returns a summary citing [L1]; entailment says contradicted
+    # first, entailed after. The gate must reject the first and ship the repaired one.
+    state = {"e": 0}
+
+    def responder(prompt, attempt):
+        if "CITED SOURCE" in prompt:                 # an entailment check
+            state["e"] += 1
+            return '{"verdict":"%s"}' % ("contradicted" if state["e"] == 1 else "entailed")
+        return '{"fold":"ok","preview":"p","full":"does x [L1]","evidence_level":"code"}'
+
+    code = tmp_path / "code"; code.mkdir(); (code / "a.cc").write_text("int x;\n")
+    out = tmp_path / "l2"
+    rep = l2.build(str(tmp_path), str(code), str(out),
+                   backend=l2.MockBackend(responder), entail=True, attempts=3)
+    assert rep["quarantined"] == 0 and state["e"] >= 2   # ran, rejected, then passed
+
+
+def test_l2_entailment_gate_quarantines_unfixable(tmp_path):
+    # entailment always says neutral -> claim never supported -> quarantined, not shipped
+    def responder(prompt, attempt):
+        if "CITED SOURCE" in prompt:
+            return '{"verdict":"neutral"}'
+        return '{"fold":"ok","preview":"p","full":"does x [L1]","evidence_level":"code"}'
+    code = tmp_path / "code"; code.mkdir(); (code / "a.cc").write_text("int x;\n")
+    out = tmp_path / "l2"
+    rep = l2.build(str(tmp_path), str(code), str(out),
+                   backend=l2.MockBackend(responder), entail=True, attempts=2)
+    assert rep["quarantined"] >= 1
 
 
 def test_eval_coverage():
