@@ -7,7 +7,7 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from kb import l1, lint, incremental, l2                    # noqa: E402
+from kb import l1, lint, incremental, l2, retrieve          # noqa: E402
 from kb.mcp_server import KB, handle                        # noqa: E402
 
 FIX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "mini-runtime")
@@ -255,6 +255,42 @@ def test_l2_symbol_spans_partition_file():
     spans = l2.symbol_spans(syms, total_lines=30)
     assert spans["f:a:1"] == (1, 9) and spans["f:b:10"] == (10, 19)
     assert spans["f:c:20"] == (20, 30)            # last symbol runs to EOF
+
+
+# ---------------------------------------------------------- M1.2 relevant_code
+def test_retrieve_lexical_and_op_and_graph():
+    symbols = [
+        {"id": "m/clip.cc:Clip:1", "name": "Clip", "kind": "class", "path": "m/clip.cc",
+         "line": 1, "importance": 0.9},
+        {"id": "m/clip.cc:ComputeImpl:5", "name": "ComputeImpl", "kind": "method",
+         "path": "m/clip.cc", "line": 5, "importance": 0.2},
+        {"id": "m/gemm.cc:Gemm:1", "name": "Gemm", "kind": "class", "path": "m/gemm.cc",
+         "line": 1, "importance": 0.5},
+    ]
+    edges = [{"caller_id": "m/clip.cc:ComputeImpl:5", "callee_id": "m/clip.cc:Clip:1"}]
+    ops = [{"op_name": "Clip", "version": "6", "kernel_path": "m/clip.cc", "line": 13}]
+    rows = retrieve.relevant_code("how does clip clamp values", symbols, edges, ops, k=5)
+    ids = [r["symbol_id"] for r in rows]
+    assert "m/clip.cc:Clip:1" in ids                      # lexical hit
+    assert any(r["kind"] == "op" for r in rows)           # op registry surfaced
+    # structural expansion pulled the caller of the Clip hit
+    assert any("ComputeImpl" in r["anchor"] for r in rows)
+    assert all("why" in r and "evidence" in r for r in rows)
+
+
+def test_retrieve_empty_query_is_safe():
+    assert retrieve.relevant_code("the and for", [], [], []) == []
+
+
+@pytest.mark.skipif(not HAS_CTAGS, reason="universal-ctags not installed")
+def test_relevant_code_via_mcp(tmp_path):
+    kbdir = tmp_path / "kb"
+    l1.build(FIX, str(kbdir))
+    kb = KB(str(kbdir))
+    r = handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                "params": {"name": "relevant_code", "arguments": {"query": "clamp"}}}, kb)
+    rows = json.loads(r["result"]["content"][0]["text"])
+    assert rows and all("why" in row for row in rows)
 
 
 def test_mcp_find_symbol_without_l2_falls_back(tmp_path):

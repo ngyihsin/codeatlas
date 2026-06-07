@@ -41,7 +41,7 @@ retrieval entry point we use to measure relevance.
 - **Exit:** `find_symbol("Clip_6::Compute")` returns a symbol-scoped, lint-clean summary; test
   asserts `scope=="symbol"`.
 
-### M1.2 — Generic retrieval `relevant_code(query)` (FR-7) · M
+### M1.2 — Generic retrieval `relevant_code(query)` (FR-7) · M · ✅ DONE
 - Hybrid retrieval (design §3.4): lexical match of query tokens against `symbols`/`ops`; expand
   along `edges` (graph nav, the strongest signal [LocAgent][locagent]); rank by `importance`.
   Return top-5 `{path, symbol, why, evidence, precision}`. `kb/retrieve.py` + MCP tool. *(This is

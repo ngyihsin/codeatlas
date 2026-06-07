@@ -116,6 +116,12 @@ class KB:
         s = self.summary_by_path.get(path) or self.summary_by_id.get(path)
         return s or {"error": f"no L2 summary for {path!r} (not generated yet)"}
 
+    def relevant_code(self, query: str, k: int = 5) -> list[dict]:
+        # Hybrid NL→code retrieval (lexical + call-graph expansion + importance).
+        from .retrieve import relevant_code as _rc
+        return _rc(query, self.symbols, self.edges, self.ops,
+                   self.summary_by_id, k=min(k, BUDGET))
+
     def trace_callers(self, symbol: str, depth: int = 1) -> list[dict]:
         ids = [s["id"] for s in self.symbols if s.get("name") == symbol or s.get("id") == symbol]
         rev: dict[str, list[str]] = {}
@@ -180,6 +186,9 @@ TOOLS = [
     {"name": "trace_callers", "description": "Who calls this symbol (bounded BFS).",
      "inputSchema": {"type": "object", "properties": {
          "symbol": {"type": "string"}, "depth": {"type": "integer"}}, "required": ["symbol"]}},
+    {"name": "relevant_code", "description": "Rank symbols/ops relevant to a natural-language query.",
+     "inputSchema": {"type": "object", "properties": {
+         "query": {"type": "string"}, "k": {"type": "integer"}}, "required": ["query"]}},
     {"name": "find_op", "description": "Find op registrations by name (the op registry).",
      "inputSchema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
     {"name": "get_summary", "description": "Get the L2 explanation for a file or module path.",

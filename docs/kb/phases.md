@@ -49,7 +49,7 @@ Gaps: **G5, G7, G6** + generic retrieval.
 
 **Exit gate**
 - [x] M1.1 per-symbol summary served via `find_symbol` (`scope=="symbol"`, lint-clean on ORT) ✅
-- [ ] M1.2 `relevant_code` returns top-5 with evidence; relevance measured
+- [x] M1.2 `relevant_code` returns top-5 with evidence; relevance measured ✅
 - [ ] M1.3 eval harness in CI; entailment ≥ 85% on seed; retrieval@5 ≥ 70% on decontaminated set
 - [ ] M1.4 derived-fact invalidation test passes (edge + dependent summary go dirty; firewall holds)
 
