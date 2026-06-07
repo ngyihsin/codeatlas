@@ -48,7 +48,7 @@ on token cost + freshness, not human readability.
 | L2 evidence lint | ✅ | `kb/lint.py` |
 | L2 LLM summary runner (fold/preview/full) | ✅ spawns an AI agent per node; lint self-repair loop; real ORT run | `kb/l2.py` |
 | Incremental hash + fold firewall | ✅ | `kb/incremental.py` |
-| MCP retrieval server (token-budgeted) | ✅ | `kb/mcp_server.py` |
+| MCP retrieval server (token-budgeted) | ✅ joins L1+L2+L3 by path; `find_op`/`get_summary`/`find_symbol`(+L2) | `kb/mcp_server.py` |
 | L3 recipe/decision-tree + `find_recipe` | ◐ schema + stub | `fixtures/recipes/`, `kb/mcp_server.py` |
 | L3 extraction prompts (PR-mine / interview) | ◐ in spec appendices B–D | Drive spec |
 

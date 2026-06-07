@@ -195,11 +195,16 @@ def build_leaf_prompt(rel_path: str, source: str) -> str:
     )
 
 
-def build_synthesis_prompt(name: str, child_folds: list[str]) -> str:
-    kids = "\n".join(f"  - {f}" for f in child_folds)
+def build_synthesis_prompt(name: str, children: list[dict]) -> str:
+    # Synthesize from children's PREVIEWS (sentences), not their 20-char folds, so
+    # the parent has real signal; ask it to cite the child file each claim came from
+    # (provenance for drill-down). It cannot see source, so no [Lxx] lines.
+    kids = "\n".join(f"  - {c.get('path')}: {c.get('preview', '')}" for c in children)
     return (
-        f"Summarize the module '{name}' from its children's one-line folds only "
-        "(you cannot see their source). Do not invent line numbers.\n\n"
+        f"Summarize the module '{name}' from its children's one-sentence previews "
+        "(you cannot see their source). When you state what the module does, name the "
+        "child file it comes from in parentheses, e.g. (math/clip.cc). Do NOT invent "
+        "line numbers.\n\n"
         + _SCHEMA_RULES.format(level="inferred")
         + '\nChildren:\n' + kids
     )
@@ -299,7 +304,7 @@ def build(l1_dir: str, code_root: str, out_dir: str, *, backend: Backend,
         cache = json.load(open(cache_path, encoding="utf-8"))
 
     clean, quarantine, new_cache = [], [], {}
-    folds_by_dir: dict[str, list[str]] = {}
+    children_by_dir: dict[str, list[dict]] = {}
     stats = {"generated": 0, "cached": 0, "quarantined": 0}
 
     files = list(_iter_source_files(code_root, only, max_bytes))
@@ -329,20 +334,22 @@ def build(l1_dir: str, code_root: str, out_dir: str, *, backend: Backend,
                 continue
         new_cache[rel] = {"hash": h, "summary": s}
         clean.append(s)
-        folds_by_dir.setdefault(os.path.dirname(rel) or ".", []).append(
-            s.get("fold", ""))
+        children_by_dir.setdefault(os.path.dirname(rel) or ".", []).append(
+            {"path": rel, "fold": s.get("fold", ""), "preview": s.get("preview", "")})
 
-    # ---- synthesis: one summary per directory, from child folds (firewall key) ----
-    for d, child_folds in sorted(folds_by_dir.items()):
+    # ---- synthesis: one summary per directory, from child previews ----
+    # Firewall keys on previews (sentences), not 20-char folds: a behavior change
+    # that alters the meaning re-rolls the parent, instead of silently going stale.
+    for d, kids in sorted(children_by_dir.items()):
         ident = f"module:{d}"
-        h = incremental.input_hash("", sorted(child_folds))  # firewall keys on folds
+        h = incremental.input_hash("", sorted(k["preview"] for k in kids))
         cached = cache.get(ident)
         if use_incremental and cached and cached.get("hash") == h:
             s = cached["summary"]
             stats["cached"] += 1
         else:
             res = generate_summary(
-                build_synthesis_prompt(d, child_folds), backend=backend,
+                build_synthesis_prompt(d, kids), backend=backend,
                 ident=ident, path=None, source_lines=None,
                 symbol_names=symbol_names, attempts=attempts)
             s = res.summary

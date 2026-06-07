@@ -5,15 +5,17 @@ A dependency-free JSON-RPC 2.0 server over stdio implementing the MCP methods
 (summaries/anchors, never whole files) so the agent never greps + cats blindly.
 
 Tools (from the spec's retrieval API):
-  find_symbol(query, detail)        — symbols matching a name, at the requested detail
+  find_symbol(query, detail)        — symbols by name, with the joined L2 summary if generated
+  find_op(name)                     — op registry lookup (the spec's #1 artifact)
+  get_summary(path)                 — the L2 explanation for a file or module path
   trace_callers(symbol, depth)      — who calls this (bounded BFS over the call graph)
   find_recipe(task)                 — L3 recipe lookup (keyword today; embeddings later)
   get_recipe_steps(recipe_id)       — the full recipe / decision tree
   what_changed(symbol)              — churn / last_modified (drift signal)
-  review_status(symbol)             — verified | speculation | drifted
+  review_status(symbol)             — L2 draft|reviewed if summarized, else mechanical (L1)
 
-Backed by a KB directory (symbols.jsonl, edges.jsonl, ops.jsonl, recipes/*.yaml) built by
-`kb.l1`. Point it with $KB_DIR or argv[1].
+Backed by a KB directory built by `kb.l1` (symbols/edges/ops.jsonl, recipes/*.yaml) and
+`kb.l2` (summaries.jsonl, joined to symbols by path). Point it with $KB_DIR or argv[1].
 
 Run / verify:
   KB_DIR=/path/to/kb python -m kb.mcp_server     # then write JSON-RPC lines to stdin
@@ -39,6 +41,15 @@ class KB:
         self.edges = self._jsonl("edges.jsonl")
         self.ops = self._jsonl("ops.jsonl")
         self.recipes = self._recipes()
+        # L2: join generated summaries to symbols/files by path (seam fix).
+        self.summaries = self._jsonl("summaries.jsonl")
+        self.summary_by_path: dict[str, dict] = {}
+        self.summary_by_id: dict[str, dict] = {}
+        for s in self.summaries:
+            if s.get("path"):
+                self.summary_by_path.setdefault(s["path"], s)
+            if s.get("id"):
+                self.summary_by_id[s["id"]] = s
 
     def _jsonl(self, name: str) -> list[dict]:
         p = os.path.join(self.dir, name)
@@ -65,15 +76,44 @@ class KB:
         rows = []
         for s in hits[:BUDGET]:
             anchor = f"{s['path']} → {s['name']}"
+            # L2 summary for the symbol's file (file-level), if generated yet.
+            summ = self.summary_by_path.get(s.get("path"))
             if detail == "fold":
-                rows.append({"anchor": anchor, "kind": s.get("kind")})
+                row = {"anchor": anchor, "kind": s.get("kind")}
+                if summ:
+                    row["fold"] = summ.get("fold")
+                rows.append(row)
             elif detail == "preview":
-                rows.append({"anchor": anchor, "kind": s.get("kind"),
-                             "signature": s.get("signature", ""),
-                             "importance": s.get("importance", 0)})
+                row = {"anchor": anchor, "kind": s.get("kind"),
+                       "signature": s.get("signature", ""),
+                       "importance": s.get("importance", 0)}
+                if summ:  # the generated, lint-verified explanation (file scope)
+                    row["summary"] = summ.get("preview")
+                    row["scope"] = "file"
+                    row["evidence_level"] = summ.get("evidence_level")
+                    row["confidence"] = summ.get("confidence", "draft")
+                rows.append(row)
             else:  # full
-                rows.append(s)
+                row = dict(s)
+                if summ:
+                    row["l2"] = {k: summ.get(k) for k in
+                                 ("full", "evidence_level", "confidence")}
+                rows.append(row)
         return rows
+
+    def find_op(self, name: str) -> list[dict]:
+        # The spec's #1 artifact, finally reachable: query the op registry.
+        q = name.lower()
+        hits = [o for o in self.ops if q in o.get("op_name", "").lower()]
+        return [{"op": o.get("op_name"), "version": o.get("version"),
+                 "provider": o.get("provider"), "framework": o.get("framework"),
+                 "anchor": f"{o.get('kernel_path')}:{o.get('line')}"}
+                for o in hits[:BUDGET]]
+
+    def get_summary(self, path: str) -> dict:
+        # Direct access to a file/module L2 explanation (e.g. "math/clip.cc" or "module:math").
+        s = self.summary_by_path.get(path) or self.summary_by_id.get(path)
+        return s or {"error": f"no L2 summary for {path!r} (not generated yet)"}
 
     def trace_callers(self, symbol: str, depth: int = 1) -> list[dict]:
         ids = [s["id"] for s in self.symbols if s.get("name") == symbol or s.get("id") == symbol]
@@ -118,10 +158,17 @@ class KB:
                 for s in self.symbols if s.get("name") == symbol][:BUDGET]
 
     def review_status(self, symbol: str) -> list[dict]:
-        # L1 facts are mechanical; until L2/L3 attach a status, report xref confidence.
-        return [{"anchor": f"{s['path']} → {s['name']}",
-                 "status": "mechanical (L1)", "importance": s.get("importance", 0)}
-                for s in self.symbols if s.get("name") == symbol][:BUDGET]
+        # Reflect the real L2 review state when a summary exists; else mechanical L1.
+        out = []
+        for s in self.symbols:
+            if s.get("name") != symbol:
+                continue
+            summ = self.summary_by_path.get(s.get("path"))
+            status = (f"L2 {summ.get('confidence', 'draft')} ({summ.get('evidence_level')})"
+                      if summ else "mechanical (L1)")
+            out.append({"anchor": f"{s['path']} → {s['name']}", "status": status,
+                        "importance": s.get("importance", 0)})
+        return out[:BUDGET]
 
 
 TOOLS = [
@@ -132,6 +179,10 @@ TOOLS = [
     {"name": "trace_callers", "description": "Who calls this symbol (bounded BFS).",
      "inputSchema": {"type": "object", "properties": {
          "symbol": {"type": "string"}, "depth": {"type": "integer"}}, "required": ["symbol"]}},
+    {"name": "find_op", "description": "Find op registrations by name (the op registry).",
+     "inputSchema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
+    {"name": "get_summary", "description": "Get the L2 explanation for a file or module path.",
+     "inputSchema": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
     {"name": "find_recipe", "description": "Find an L3 recipe for a task.",
      "inputSchema": {"type": "object", "properties": {"task": {"type": "string"}}, "required": ["task"]}},
     {"name": "get_recipe_steps", "description": "Full recipe / decision tree by id.",

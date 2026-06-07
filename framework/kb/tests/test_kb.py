@@ -196,3 +196,45 @@ def test_l2_incremental_skips_unchanged(tmp_path):
 def test_l2_parse_summary_tolerates_fences():
     s = l2.parse_summary('```json\n{"fold":"a","x":1}\n```')
     assert s["fold"] == "a" and s["x"] == 1
+
+
+# ----------------------------------------------- END-TO-END: generator -> agent
+@pytest.mark.skipif(not HAS_CTAGS, reason="universal-ctags not installed")
+def test_l2_summaries_reach_agent_via_mcp(tmp_path):
+    """The whole point: a generated summary must actually surface through MCP."""
+    kbdir = tmp_path / "kb"
+    l1.build(FIX, str(kbdir))
+    # generate L2 INTO the same kb dir so the MCP server loads summaries.jsonl with L1
+    l2.build(str(kbdir), FIX, str(kbdir), backend=l2.MockBackend(_clean_reply))
+    kb = KB(str(kbdir))
+
+    # seam 1+3+4: find_symbol now carries the generated L2 summary (joined by path)
+    rows = kb.find_symbol("Compute", detail="preview")
+    assert rows and any(r.get("summary") for r in rows), \
+        "L2 summary did not reach find_symbol"
+    # seam 2: the op registry is finally reachable
+    ops = kb.find_op("Add")
+    add = [o for o in ops if o["op"] == "Add"]
+    assert add and ":" in add[0]["anchor"]
+    # get_summary returns the file explanation directly
+    assert "preview" in kb.get_summary("cpu/elementwise_ops.cc")
+    # seam 5: review_status reflects the real L2 draft state, not a hardcoded string
+    rs = kb.review_status("AddCompute")
+    assert rs and rs[0]["status"].startswith("L2 ")
+    # graceful fallback: a path with no summary says so, doesn't crash
+    assert "error" in kb.get_summary("does/not/exist.cc")
+
+
+def test_mcp_find_symbol_without_l2_falls_back(tmp_path):
+    """No summaries.jsonl yet -> find_symbol still works on L1 alone (no crash)."""
+    kbdir = tmp_path / "kb"
+    l1_min = kbdir
+    os.makedirs(l1_min)
+    # minimal L1: one symbol, no summaries file
+    (kbdir / "symbols.jsonl").write_text(
+        json.dumps({"id": "a.cc:f", "name": "frobnicate", "path": "a.cc",
+                    "kind": "function", "importance": 1.0, "signature": "void frobnicate()"}) + "\n")
+    kb = KB(str(kbdir))
+    rows = kb.find_symbol("frob", detail="preview")
+    assert rows and "summary" not in rows[0]          # degrades, no L2 key invented
+    assert kb.review_status("frobnicate")[0]["status"] == "mechanical (L1)"

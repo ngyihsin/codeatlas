@@ -17,7 +17,7 @@ It is an **ETL pipeline, not a doc set** — judged on token cost + freshness.
 | **L2 evidence lint** (make bluffing impossible) | `kb/lint.py` | `python -m kb.lint <summaries> --code <root>` | ✅ rejects fold>20, code-claim-without-`[Lxx]`, out-of-range refs |
 | **L2 summary generator** (spawns an AI agent per node) | `kb/l2.py` | `python -m kb.l2 build <l1_dir> <code> <out> --backend claude` | ✅ real run over ONNX Runtime; lint runs as a self-repair loop; un-fixable bluffs quarantined |
 | **Incremental hash + fold firewall** | `kb/incremental.py` | `python -m kb.incremental demo` | ✅ recompute only the dirty sub-tree; cascade stops at stable folds |
-| **MCP retrieval server** (token-budgeted) | `kb/mcp_server.py` | `KB_DIR=<out> python -m kb.mcp_server` | ✅ `find_symbol`/`trace_callers`/`find_recipe`/`get_recipe_steps`/`what_changed`/`review_status` |
+| **MCP retrieval server** (token-budgeted) | `kb/mcp_server.py` | `KB_DIR=<out> python -m kb.mcp_server` | ✅ `find_symbol` (joins L2)/`find_op`/`get_summary`/`trace_callers`/`find_recipe`/`get_recipe_steps`/`what_changed`/`review_status` |
 | **L3 recipe / decision-tree** | `fixtures/recipes/*.yaml` + `find_recipe` | via MCP | ◐ schema + stub (extraction needs PRs/humans — prompts in the spec appendices) |
 
 ## The L2 generator (`kb/l2.py`)
@@ -45,6 +45,28 @@ python -m kb.l2 build <l1_dir> <codebase> <out> --backend claude --only math/ --
 # -> summaries.jsonl (drafts) + quarantine.jsonl + l2_cache.json
 ```
 
+## How the layers connect (the retrieval path)
+
+The layers compose through the MCP server, joined by file `path` — this is what makes it a KB
+and not three disconnected artifacts:
+
+```
+L1  symbols/edges/ops.jsonl ─┐
+L2  summaries.jsonl ─────────┤→  KB (join by path)  →  MCP tools  →  agent
+L3  recipes/*.yaml ──────────┘
+```
+
+- `find_symbol(name, detail=preview)` returns the symbol **and its file's generated L2 summary**
+  (evidence_level + `draft`/`reviewed` confidence), falling back to the bare L1 signature when no
+  summary exists yet — so it degrades gracefully before L2 has run.
+- `find_op(name)` exposes the op registry (`ops.jsonl`) with `kernel_path:line` anchors.
+- `get_summary(path)` returns a file or `module:<dir>` explanation directly.
+- `review_status(symbol)` reports the real L2 review state, not a hardcoded string.
+
+A worked agent flow ("add an op"): `find_recipe` (the how) → `find_op`/`find_symbol` (a worked
+example + its L2 summary) → `get_summary` (the file/module context) → `trace_callers` (blast
+radius) → edit. All token-budgeted (≤25 rows/call).
+
 ## The op matcher (`ops.jsonl`)
 
 Op registration is macro-generated, so parsers miss it. `registration_patterns.yaml` lists each
@@ -64,15 +86,15 @@ python -m kb.l1 build  <codebase> <out_dir>     # symbols/edges/ops/module_map
 python -m kb.l2 build  <out_dir> <codebase> <l2_dir> --backend claude   # generate summaries
 python -m kb.lint      summaries.jsonl --code <codebase> --symbols <out_dir>/symbols.jsonl
 KB_DIR=<out_dir> python -m kb.mcp_server        # then speak MCP JSON-RPC on stdin
-python -m pytest -q                             # 14 tests
+python -m pytest -q                             # 16 tests
 ```
 
 ## Verification (production-quality gate)
 
-- **`pytest`: 14/14 pass** (ops extraction, pagerank distribution, lint good/bad, hash
-  stability, firewall cascade, MCP tools, unknown-tool error, **L2 generate / self-repair /
-  quarantine / incremental-skip**). L2 tests use a deterministic `MockBackend` — CI never spawns
-  an agent or hits the network.
+- **`pytest`: 16/16 pass** (ops extraction, pagerank distribution, lint good/bad, hash
+  stability, firewall cascade, MCP tools, unknown-tool error, L2 generate / self-repair /
+  quarantine / incremental-skip, **end-to-end generator→MCP wiring + L1-only fallback**). L2
+  tests use a deterministic `MockBackend` — CI never spawns an agent or hits the network.
 - **Real-source run:** the op matcher extracted **378 registrations / 123 distinct ops** from a
   sparse checkout of ONNX Runtime's CPU provider (`Conv`, `Gemm`, `MatMul`, `Softmax`, …) with
   correct versions + `file:line` anchors.
