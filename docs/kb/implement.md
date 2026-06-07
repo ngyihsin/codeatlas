@@ -2,9 +2,10 @@
 
 Companion to `spec.md` (what/why) and `design.md` (how). This is the **plan**: ordered
 milestones, each with concrete tasks mapped to files, an explicit **exit gate**, and the
-verification that proves it. Sequencing is by **leverage on the north-star** (resolve a Jira
-issue), not by layer tidiness — we build the thinnest end-to-end "Jira → patch" slice first,
-then deepen.
+verification that proves it. Sequencing is by **leverage on the KB itself** (current scope) —
+make the agent's *understand-the-code* answers accurate, grounded, fresh, and cheap, then deepen
+graph precision, trust, and scale. The **issue→code resolution loop (Jira) is deferred** to
+Phase F; we build the KB so it can be added later without rework.
 
 Legend: ✅ done · ◐ partial · ❌ not started. Effort is rough (S ≤1d, M ≤3d, L ≤1wk, XL >1wk).
 
@@ -26,85 +27,62 @@ What already exists and is verified on real ONNX Runtime — the floor we build 
 
 ---
 
-## Phase 1 — Thin vertical slice: "Jira → localized patch" (the product)
+## Phase 1 — KB depth & trust (make the core answers accurate and provable)
 
-**Goal:** the smallest end-to-end path that resolves a real issue, so we have something to
-*measure* and improve. This front-loads the highest-leverage gaps (G1, G2, G4-localize).
+**Goal:** raise the quality of the agent's *understand-the-code* answers and make grounding
+**measurable**. These are the highest-leverage KB-internal gaps (G5, G7, G6) plus the generic
+retrieval entry point we use to measure relevance.
 
-### M1.1 — Tests index (G2, FR-3) · M
-- Build `tests.jsonl`: parse test files with the existing ctags/macro machinery to map
-  `symbol/op → test`; mark `kind: regression`. `kb/l1.py` (+`extract_tests`).
-- New MCP tool `find_tests(symbol)` → regression set. `kb/mcp_server.py`
-- **Exit:** on real ORT, `find_tests("Clip_6::Compute")` returns the Clip test(s); test asserts
-  a known symbol→test link resolves.
-
-### M1.2 — `localize(issue)` tool (G1/G4) · L
-- Hybrid retrieval (design §3.4): lexical match of issue tokens against `symbols`/`ops`; expand
-  along `edges` (graph nav, the strongest localizer [LocAgent][locagent]); rank by `importance`.
-  Return top-5 `{path, symbol, why, evidence, precision}`. New `kb/localize.py` + MCP tool.
-- **Exit:** on a small **hand-built, decontaminated** issue set (5–10 ORT issues with known
-  fix-files), file-in-top-5 ≥ 70% (spec target). Report the number with the eval harness (M3.1).
-
-### M1.3 — `resolve` orchestrator (G1, FR-9) · L
-- Wire **localize → repair → validate** (design §7) as a script that, given an issue, calls the
-  MCP tools, asks the agent backend for K candidate patches, runs `find_tests` regression +
-  a generated reproduction test, and majority-votes ([Agentless][agentless]). `kb/resolve.py`.
-- Patch is **never auto-merged** — output is `{patch, evidence, tests_run}` for human review.
-- **Exit:** end-to-end on ≥1 real ORT issue: produces a patch whose repro test goes FAIL→PASS
-  with no PASS→FAIL regressions, captured as run evidence (per `/verify`).
-
-**Phase-1 exit gate:** one real Jira-style issue resolved end-to-end with regression safety, and
-a localization number on the decontaminated set. *This is the first defensible "it works" claim.*
-
----
-
-## Phase 2 — Accuracy: make the signals trustworthy
-
-The slice exists; now raise its hit-rate where the research says it matters most.
-
-### M2.1 — Per-symbol L2 summaries (G5, FR-4) · L
+### M1.1 — Per-symbol L2 summaries (G5, FR-4) · L
 - Move L2 leaves from file-level to **symbol-level**, budgeted by `importance` (full summary for
   top-N symbols/file; fold-only for the tail to bound cost). `kb/l2.py` (`build_leaf_prompt`
   takes a symbol range; orchestration iterates symbols, not files).
-- MCP `find_symbol` already joins by `path`; extend the join to symbol-id so a symbol query
-  returns *its own* summary, not the whole file's.
+- Extend the MCP join from `path` to **symbol-id** so a symbol query returns *its own* summary.
 - **Exit:** `find_symbol("Clip_6::Compute")` returns a symbol-scoped, lint-clean summary; test
   asserts `scope=="symbol"`.
 
-### M2.2 — Precise call-graph tier via scip-clang (G4, FR-2) · XL *(needs a build)*
-- Add an optional ingest: if `compile_commands.json` is present, run **scip-clang**, convert SCIP
-  occurrences → `edges.jsonl` tagged `xref:precise` (macros + types resolved [scipclang][scipclang]).
-  `kb/scip_ingest.py`. Falls back to Tier-A heuristic when absent.
-- Keep indirect/virtual edges tagged as **candidate sets** ([LLVM][llvm-cg]).
-- **Exit:** on an ORT build, a known virtual-dispatch call resolves to ≥1 precise edge; `localize`
-  accuracy on the decontaminated set improves vs M1.2 (report delta).
+### M1.2 — Generic retrieval `relevant_code(query)` (FR-7) · M
+- Hybrid retrieval (design §3.4): lexical match of query tokens against `symbols`/`ops`; expand
+  along `edges` (graph nav, the strongest signal [LocAgent][locagent]); rank by `importance`.
+  Return top-5 `{path, symbol, why, evidence, precision}`. `kb/retrieve.py` + MCP tool. *(This is
+  the reusable core the deferred `localize` would specialize — built now to measure relevance.)*
+- **Exit:** on a small **decontaminated** NL-query set (10 queries with known target symbols),
+  top-5 ≥ 70% (spec §5), reported via the eval harness (M1.3).
 
-### M2.3 — Derived-fact invalidation (G6, FR-8) · M
+### M1.3 — Faithfulness/eval harness (G7, NFR) · L
+- `kb/eval.py`: (a) **entailment** — decompose `full` into claims, verify each against the cited
+  source span (RAGAS-style, a *screen* given ~0.55 human agreement [grouse][grouse]);
+  (b) **entity-trace** — static-extract code entities, verify alignment (ETF ~73% F1 [etf][etf]);
+  (c) **calibrated confidence** from token logits, not self-report ([calib][calib]).
+- Metrics: lint-clean %, entailment %, retrieval@5, coverage. **No BLEU/ROUGE** ([bleu][bleu]).
+- **Exit:** harness runs in CI on the fixture KB; entailment ≥85% on seed summaries; metrics
+  tracked over time.
+
+### M1.4 — Derived-fact invalidation (G6, FR-8) · M
 - Extend the dirty-set logic: on a changed file, also invalidate/re-emit the **call & xref edges**
   touching its symbols and mark dependent summaries dirty — not just the file's own facts
   ([Glean][glean]). `kb/incremental.py` (+`dirty_edges`, `dirty_dependents`).
 - **Exit:** a unit test where editing a callee's signature marks the caller's edge *and* the
   caller's summary dirty; the firewall still stops where previews are unchanged.
 
+**Phase-1 exit gate:** symbol-scoped grounded summaries served via MCP, an eval harness in CI
+reporting entailment ≥85% and retrieval@5 on a decontaminated set, and correct incremental
+invalidation of derived facts. *This is the first defensible "the KB is accurate and provable"
+claim.*
+
 ---
 
-## Phase 3 — Trust: prove grounding, enable review
+## Phase 2 — Graph precision & human trust
 
-Knowledge an RD can't trust (or promote) is inert. This phase makes trust measurable and
-operational.
+### M2.1 — Precise call-graph tier via scip-clang (G4, FR-2) · XL *(needs a build)*
+- Add an optional ingest: if `compile_commands.json` is present, run **scip-clang**, convert SCIP
+  occurrences → `edges.jsonl` tagged `xref:precise` (macros + types resolved [scipclang][scipclang]).
+  `kb/scip_ingest.py`. Falls back to Tier-A heuristic when absent.
+- Keep indirect/virtual edges tagged as **candidate sets** ([LLVM][llvm-cg]).
+- **Exit:** on an ORT build, a known virtual-dispatch call resolves to ≥1 precise edge;
+  `relevant_code` accuracy on the decontaminated set improves vs M1.2 (report delta).
 
-### M3.1 — Faithfulness/eval harness (G7, NFR) · L
-- `kb/eval.py`: (a) **entailment** check — decompose `full` into claims, verify each against the
-  cited source span (RAGAS-style, treated as a *screen* given ~0.55 human agreement
-  [grouse][grouse]); (b) **entity-trace** — static-extract code entities, verify alignment (ETF
-  ~73% F1 [etf][etf]); (c) **calibrated confidence** from token logits, not self-report
-  ([calib][calib]).
-- Metrics dashboard: lint-clean %, entailment %, localization@5, fix-success on the
-  decontaminated set. **No BLEU/ROUGE** ([bleu][bleu]).
-- **Exit:** harness runs in CI on the fixture KB; reports entailment ≥85% on the seed summaries;
-  fix-success tracked over time.
-
-### M3.2 — Human-review workflow (G8) · M
+### M2.2 — Human-review workflow (G8) · M
 - Promotion pipeline: `draft → reviewed → battle-tested`. A reviewer CLI/endpoint lists a
   module's drafts with their evidence anchors, accepts/edits/rejects, and stamps `owner` +
   `reviewed_at`. `review_status` already surfaces state. Promotion of an L3 recipe to
@@ -112,34 +90,49 @@ operational.
 - **Exit:** an RD can promote a module's L2 drafts in ≤10 min (spec target); a promoted summary
   flips `review_status` to `reviewed`.
 
-### M3.3 — Prior-fix / experience memory (G3, FR-6) · L
-- PR-miner: walk git history for `issue ↔ merged diff ↔ tests touched ↔ outcome` →
-  `fixes.jsonl`; MCP `find_prior_fix(issue)`. Feed hits into `resolve` repair (ExpeRepair: +8 pts
-  [experepair][experepair]). `kb/mine_fixes.py`.
-- **Exit:** `find_prior_fix` returns a relevant past diff for a held-out issue; `resolve` shows a
-  measurable fix-success lift when memory is enabled vs ablated (mirror the ExpeRepair ablation).
+### M2.3 — Tests index (G2, FR-3) · M
+- Build `tests.jsonl`: parse test files with the existing ctags/macro machinery to map
+  `symbol/op → test`. `kb/l1.py` (+`extract_tests`). New MCP tool `find_tests(symbol)`.
+- **Exit:** on real ORT, `find_tests("Clip_6::Compute")` returns the Clip test(s); test asserts
+  a known symbol→test link resolves. *(Also the regression set the deferred validate step needs.)*
 
 ---
 
-## Phase 4 — Scale & serving hardening
+## Phase 3 — Knowledge moat & scale
 
-### M4.1 — MCP scale features (G10) · M
+### M3.1 — L3 recipe extraction + semantic search (G9) · L
+- Recipe miner: cluster related past PRs/changes into candidate decision-tree recipes for human
+  review (the tacit moat); land as `draft`, promote on RD review. `kb/mine_recipes.py`.
+- Replace `find_recipe` keyword match with embeddings **over the recipe layer only** (the one
+  sanctioned place [§spec 3]), small index + metadata pre-filter ([hnsw][hnsw]); keyword remains
+  the fallback behind the same interface.
+- **Exit:** a paraphrased task ("introduce a new kernel") retrieves `add-an-op`; index rebuild is
+  scripted and "time since full reindex" is tracked.
+
+### M3.2 — MCP scale features (G10) · M
 - Add **cursor pagination** (`nextCursor`) and the **tools-vs-resources** split (static context
   as read-only resources); **Streamable HTTP** transport beside stdio; **lazy schema loading**
   to avoid the ~75k-token startup tax ([mcp][mcp], [mcp-bloat][mcp-bloat]). `kb/mcp_server.py`.
 - **Exit:** a paginated `find_symbol` over a large result set stays within the row budget per
   page; HTTP transport answers `initialize`/`tools/call`.
 
-### M4.2 — L3 semantic search (G9) · M
-- Replace `find_recipe` keyword match with embeddings **over the recipe/fixes layer only** (the
-  one sanctioned place [§spec 3]), small index + metadata pre-filter ([hnsw][hnsw]). Behind the
-  same interface so keyword remains the fallback.
-- **Exit:** a paraphrased task ("introduce a new kernel") retrieves `add-an-op`; index rebuild is
-  scripted and its "time since full reindex" is tracked.
-
-### M4.3 — Drift sampler & freshness SLO (FR-8) · S
+### M3.3 — Drift sampler & freshness SLO (FR-8) · S
 - Periodic random re-derivation + diff vs cache to catch silent staleness; emit a freshness
   metric. **Exit:** sampler flags an intentionally-stale node in a test.
+
+---
+
+## Deferred Phase F — issue→code resolution (NOT in current scope)
+
+Documented for continuity; build only after Phases 1–3 meet the §5 KB metrics. Reactivates G1/G3.
+
+- **MF.1 — `resolve` orchestrator (G1, FR-9):** wire **localize → repair → validate**
+  ([Agentless][agentless]) on top of `relevant_code` (M1.2) + `find_tests` (M2.3); sample K
+  patches, run regression + generated repro test, majority-vote. Never auto-merge. `kb/resolve.py`.
+- **MF.2 — prior-fix / experience memory (G3, FR-6):** PR-miner → `fixes.jsonl`;
+  `find_prior_fix(issue)`; feed into repair (+~8 pts [experepair][experepair]). `kb/mine_fixes.py`.
+- **MF.3 — Jira/GitHub adapter:** normalize a ticket → issue record; surface the patch + evidence
+  for human supervision.
 
 ---
 
@@ -160,15 +153,17 @@ operational.
 | Phase | Milestones | Headline exit gate | Effort |
 |---|---|---|---|
 | 0 | baseline | ✅ pytest green + real ORT demo | done |
-| **1** | tests-index, localize, resolve | **1 real issue resolved end-to-end, regression-safe** | L–XL |
-| 2 | per-symbol L2, scip-clang, derived invalidation | localization accuracy ↑ vs Phase-1 baseline | XL |
-| 3 | eval harness, review workflow, prior-fix memory | entailment ≥85%; fix-success lift from memory | L–XL |
-| 4 | MCP scale, L3 semantic, drift | within token budget at scale; freshness SLO met | M |
+| **1** | per-symbol L2, `relevant_code`, eval harness, derived invalidation | **symbol-scoped grounded answers; entailment ≥85% + retrieval@5 in CI** | L–XL |
+| 2 | scip-clang precise graph, review workflow, tests index | precise edges where build exists; RD can promote drafts; `find_tests` works | XL |
+| 3 | L3 recipe mining + semantic, MCP scale, drift | paraphrase retrieves recipe; within budget at scale; freshness SLO | L |
+| ⏸ F | resolve loop, prior-fix memory, Jira adapter | *deferred — build after Phases 1–3* | — |
 
-**Definition of "production-ready" (v1):** Phases 1–3 complete, metrics in `spec.md §5` met on a
-**private, decontaminated** eval set (not the public SWE-bench leaderboard, which is inflated
-~6–7 pts by test flaws/leakage [openai-drop][openai-drop]), every generated artifact behind the
-grounding gate + human-review ladder, and the whole KB rebuildable deterministically.
+**Definition of "production-ready" (v1, KB scope):** Phases 1–3 complete, the **KB metrics** in
+`spec.md §5` met (retrieval relevance, grounding/entailment, coverage, freshness, token cost,
+review throughput), every generated artifact behind the grounding gate + human-review ladder, and
+the whole KB rebuildable deterministically. The deferred issue→code metric (fix-success on a
+private, decontaminated set — *not* the public SWE-bench leaderboard, inflated ~6–7 pts by test
+flaws/leakage [openai-drop][openai-drop]) is the bar for Phase F, later.
 
 ---
 

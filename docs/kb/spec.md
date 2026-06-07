@@ -2,9 +2,15 @@
 
 > **One-line goal.** Build a structured, machine-readable, human-verified knowledge base over
 > large C/C++ ML-runtime codebases (QNN · SNPE · Hexagon NN · ExecuTorch · ONNX Runtime) so an
-> AI "digital colleague" can take a **Jira issue** and reliably **localize → change → validate**
-> the code — designing a new feature or fixing a bug — at low token cost and with traceable
-> evidence.
+> AI "digital colleague" can reliably **locate code and apply the institutional knowledge**
+> needed to change it correctly — design a feature or fix a bug — at low token cost and with
+> traceable evidence.
+>
+> **Scope note (current).** The end-to-end *issue→code orchestration* (driving the KB from a
+> Jira/GitHub ticket through an automated localize→repair→validate loop) is **deferred** — see
+> §7. This document focuses on the **knowledge base itself**: the layers, retrieval, freshness,
+> grounding, and the queries an agent uses to understand and safely change the code. The
+> issue-resolution research is retained as forward-looking design context, clearly marked.
 
 This is the **what & why**. `design.md` is the architecture; `implement.md` is the phased build
 plan. All three are versioned with the `framework/kb/` code they describe.
@@ -44,25 +50,34 @@ fix-success — not human readability.**
 
 ---
 
-## 2. Users & the north-star workflow
+## 2. Users & the core workflows
 
 **Primary user:** an autonomous/semi-autonomous coding agent ("digital colleague"). **Secondary
-users:** the human RD who reviews generated knowledge, and the human who supervises the agent's
-PR.
+users:** the human RD who reviews generated knowledge, and the human who supervises the agent.
 
-**North-star use case — "Resolve JIRA-1234".** The agent is handed an issue ("Clip op produces
-wrong output for fp16 on the CPU provider") and must produce a correct, test-passing patch. The
-research is unambiguous that the reproducible spine is **localize → repair → validate**
-([Agentless: 50.8% on SWE-bench Verified at ~$0.34/issue][agentless]), and that three KB-shaped
-inputs raise success:
+**What the agent does with the KB (current scope).** Before changing anything, an agent must
+*understand* the code cheaply and correctly. The KB serves these query workflows:
 
-| Lever | Evidence | What the KB must supply |
+| Agent need | KB capability | Example |
 |---|---|---|
-| A **code graph** for localization | LocAgent ~92.7% file-level on SWE-bench-Lite ([LocAgent][locagent]) | symbols, call graph, op registry, summaries — joined and queryable |
-| The **right tests** | agents without regression context broke ~6.5 pass-to-pass tests/patch ([regression study][regress]); reproduction tests drive patch selection | a tests index linking symbols → covering tests |
-| **Prior-fix experience** | ExpeRepair dual memory adds ~8 points pass@1; ablating it drops 49.3→41.3% ([ExpeRepair][experepair]) | L3 recipes/decision-trees mined from past PRs/tickets |
+| "where does feature/op X live?" | op registry + symbol/structural lookup | `find_op("Clip")` → `math/clip.cc:13` |
+| "what does this code do / why?" | grounded L2 summaries (fold/preview/full + citations) | `get_summary("math/clip.cc::Clip_6::Compute")` |
+| "what calls this / what's the blast radius?" | call graph (precision-tagged) | `trace_callers("Compute")` |
+| "what tests guard this code?" | tests index | `find_tests("Clip_6::Compute")` |
+| "how is this kind of change done here?" | L3 recipes / decision trees | `find_recipe("add an op")` |
+| "is this knowledge trustworthy & current?" | confidence ladder + freshness | `review_status(...)` |
 
-So the KB's job is to make `localize`, `repair`, and `validate` each cheaper and more accurate.
+So the KB's job (current scope) is to make these answers **accurate, grounded, fresh, and
+token-cheap**.
+
+**Forward-looking (deferred, §7) — issue→code resolution.** Once the KB is solid, the natural
+consumer is an automated **localize → repair → validate** loop over a Jira/GitHub issue
+([Agentless: 50.8% on SWE-bench Verified at ~$0.34/issue][agentless]). The research shows three
+KB-shaped inputs would raise its success — a **code graph** for localization (LocAgent ~92.7%
+file-level [LocAgent][locagent]), the **right tests** (agents without regression context broke
+~6.5 pass-to-pass tests/patch [regression][regress]), and **prior-fix experience** (ExpeRepair
++~8 pts pass@1 [ExpeRepair][experepair]). We build the KB *so that* this is possible later, but
+the orchestration is out of current scope.
 
 ---
 
@@ -138,10 +153,10 @@ Lint runs as a **self-repair loop** (errors fed back to the generator). *(Built.
 that shares the generator's model self-confirms — the "hallucination barrier"
 ([self-correction barrier][barrier]).
 
-**FR-6 (L3 recipes + prior-fix memory).** Decision-tree recipes ("add an op", "fix a dispatch
-bug") and an episodic memory of past fixes (PR-mined), retrievable by task. Confidence ladder:
-`draft → reviewed → battle-tested` (a real ticket shipped using it). *(Schema + one stub built;
-extraction is a gap — §6.)*
+**FR-6 (L3 recipes).** Decision-tree recipes ("add an op", "fix a dispatch bug"), retrievable by
+task. Confidence ladder: `draft → reviewed → battle-tested` (a real ticket shipped using it).
+*(Schema + one stub built; extraction is a gap — §6.)* The companion **prior-fix episodic
+memory** (PR-mined `{issue → diff → outcome}`) is **deferred** with the resolution loop (§7).
 
 **FR-7 (Retrieval API / MCP).** Serve the KB over MCP (JSON-RPC 2.0). Every tool is
 **token-budgeted** (≤25 rows). Tools join L1+L2+L3 by `path`. *(Built: 8 tools, joined.)*
@@ -154,8 +169,9 @@ cross-references, parent summaries), not just the changed file — this is the h
 incremental indexing ([Glean ownership][glean]). *(Fold/preview firewall built; derived-fact
 invalidation is a gap — §6.)*
 
-**FR-9 (Issue→code workflow).** Accept a Jira issue and drive `localize → repair → validate`,
-returning a candidate patch + the evidence used. *(Gap — the headline feature, not yet built.)*
+**FR-9 (Issue→code workflow) — DEFERRED.** Accept a Jira/GitHub issue and drive
+`localize → repair → validate`, returning a candidate patch + the evidence used. *Out of current
+scope (§7); the KB is designed so this can be built on top later without rework.*
 
 ---
 
@@ -166,14 +182,20 @@ set *conservatively* because public SWE-bench numbers are inflated by test flaws
 leakage (~6–7 pts) and OpenAI has stopped reporting SWE-bench Verified for this reason
 ([why OpenAI dropped Verified][openai-drop]); we target **decontaminated** evaluation.
 
+Active KB metrics (current scope):
+
 | Metric | Definition | Target (v1) | Stretch |
 |---|---|---|---|
-| **Localization accuracy** | issue → correct file in top-5 | ≥ 70% file-level | ≥ 85% ([LocAgent range][locagent]) |
-| **Fix-success** | FAIL→PASS *and* no PASS→FAIL regressions, on a **private/decontaminated** set | ≥ 25% | ≥ 40% |
-| **Token cost / query** | tokens to answer a localization query | ≤ 5k median | ≤ 2k |
+| **Retrieval relevance** | NL query → correct symbol/file in top-5 | ≥ 70% top-5 | ≥ 85% ([LocAgent range][locagent]) |
+| **Token cost / query** | tokens to answer a retrieval query | ≤ 5k median | ≤ 2k |
 | **Grounding** | L2 summaries passing entailment check (cited line supports claim) | ≥ 95% lint-clean; ≥ 85% entailment | ≥ 95% entailment |
+| **Coverage** | fraction of high-importance symbols with a reviewed L2 summary | ≥ 80% of top-quartile | ≥ 95% |
 | **Freshness** | p95 staleness window after a merge | ≤ 1 build cycle | continuous |
 | **Review throughput** | RD minutes to promote a module's L2 draft→reviewed | ≤ 10 min/module | ≤ 5 |
+
+Deferred metric (with §7): **fix-success** — FAIL→PASS and no PASS→FAIL regressions on a
+**private/decontaminated** set (target ≥25% v1 / ≥40% stretch). Listed here so the KB metrics
+above are chosen to *support* it later.
 
 **Quality-of-evaluation note.** Do **not** measure summary quality with BLEU/ROUGE — they are
 empirically *uncorrelated* with human comprehension of code summaries ([human-comprehension
@@ -187,27 +209,39 @@ calibrated ([calibration study][calib]).
 
 ## 6. Gap analysis (toward production)
 
-Ranked by leverage on the north-star (Jira→fix).
+Ranked by leverage on the **KB itself** (current scope). G-IDs are stable (referenced from
+`design.md`/`implement.md`); ordering reflects current priority.
 
 | # | Gap | Why it matters | Evidence |
 |---|---|---|---|
-| **G1** | **No issue→code workflow** (FR-9) | it *is* the product | [Agentless][agentless] |
-| **G2** | **No tests index** (FR-3) | regressions are the #1 cause of rejected agent PRs | [regression][regress] |
-| **G3** | **No prior-fix/experience memory** (FR-6) | +8 pts pass@1 | [ExpeRepair][experepair] |
-| **G4** | **Call graph is heuristic only** (FR-2) | localization rides on the graph | [LocAgent][locagent]; precise tier = [scip-clang][scipclang] |
-| **G5** | **L2 is file-level, not per-symbol** (FR-4) | symbol queries get whole-file answers | — |
-| **G6** | **Derived-fact invalidation missing** (FR-8) | stale call edges → wrong localization | [Glean][glean] |
+| **G5** | **L2 is file-level, not per-symbol** (FR-4) | symbol queries get whole-file answers — core retrieval quality | — |
 | **G7** | **No faithfulness/eval harness** (NFR) | can't prove grounding or track drift | [ETF][etf], [QAFactEval][qafe] |
+| **G4** | **Call graph is heuristic only** (FR-2) | "what calls this / blast radius" rides on the graph | [LocAgent][locagent]; precise tier = [scip-clang][scipclang] |
+| **G6** | **Derived-fact invalidation missing** (FR-8) | stale call edges/summaries → wrong answers | [Glean][glean] |
 | **G8** | **No human-review workflow/UI** for L2/L3 promotion | trust ladder is inert | 84% of SE researchers call human eval problematic ([survey][survey]) |
 | **G9** | **L3 recipes: 1 stub, keyword search** | tacit layer is the moat | [GraphRAG][graphrag] |
+| **G2** | **No tests index** (FR-3) | "what guards this code?" is a core KB query (and later, regression safety) | [regression][regress] |
 | **G10** | **MCP: no pagination/resources, single transport** | budget + scale | [MCP spec][mcp] |
+
+**Deferred with the issue→code loop (§7), not part of current scope:**
+
+| # | Gap | Reactivate when |
+|---|---|---|
+| **G1** | No issue→code workflow (FR-9) | KB metrics (§5) are met and we add the resolution consumer |
+| **G3** | No prior-fix/experience memory (FR-6) | building the repair step (+8 pts pass@1 [ExpeRepair][experepair]) |
 
 ---
 
 ## 7. Scope & non-goals
 
-**In scope:** the KB pipeline (L1/L2/L3), retrieval (MCP), freshness, the QC/eval harness, and
-the issue→code orchestration that *consumes* the KB.
+**In scope (current):** the KB pipeline (L1/L2/L3), retrieval (MCP), freshness, and the QC/eval
+harness — i.e. everything needed to make the agent's *understand-the-code* queries (§2) accurate,
+grounded, fresh, and cheap.
+
+**Deferred (designed-for, not built now):** the **issue→code orchestration** that *consumes* the
+KB — the Jira/GitHub adapter, the `localize → repair → validate` loop, patch generation, and the
+prior-fix episodic memory (G1, G3). The architecture (`design.md §7`) keeps this as a clean
+downstream consumer so it can be added later without reworking the KB.
 
 **Non-goals (v1):** (a) being a general code-search product (we serve agents, not browsing
 humans); (b) embedding all source (explicitly rejected, §3); (c) auto-merging patches without

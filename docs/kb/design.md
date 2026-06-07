@@ -35,8 +35,8 @@ because line anchors break on reformat ([SCIP][scip]).
 |---|---|---|
 | source tree | macro-matcher (regex/YAML) + ctags | build-free, always available |
 | `compile_commands.json` *(optional)* | **scip-clang** (precise tier) | build-aware; resolves macros + types ([scip-clang][scipclang]) |
-| git history | churn/blame + PR miner | feeds importance + L3 experience memory |
-| Jira | issue adapter | normalizes issue → `{title, body, repro?, component}` |
+| git history | churn/blame + PR miner | feeds importance; PR-mining for L3 recipes |
+| Jira *(⏸ deferred, §7)* | issue adapter | normalizes issue → `{title, body, repro?, component}` |
 
 **Two-tier indexing is the production pattern, not a compromise.** Neither tier alone is
 complete: tree-sitter/ctags miss macro-generated and cross-file symbols
@@ -201,11 +201,11 @@ Dependency-free JSON-RPC 2.0. Current tools (built), all token-budgeted (≤25 r
 `find_symbol`(+L2 join) · `find_op` · `get_summary` · `trace_callers` · `find_recipe` ·
 `get_recipe_steps` · `what_changed` · `review_status`
 
-**Planned (for the north-star):**
+**Planned (current scope):**
 
-- `localize(issue)` → ranked `{file, symbol, why, evidence}` (the localize phase, §7).
-- `find_tests(symbol)` → regression set + repro candidates (FR-3).
-- `find_prior_fix(issue)` → episodic memory hits (FR-6).
+- `find_tests(symbol)` → tests guarding a symbol (FR-3) — a core KB query ("what guards this?").
+- `relevant_code(query)` → ranked `{file, symbol, why, evidence}` for a natural-language query
+  (generic retrieval; the same machinery the deferred `localize` would reuse).
 - Adopt MCP's **tools (model-controlled) vs resources (app-controlled, read-only)** split and
   **cursor pagination** (`nextCursor`) so large result sets and static context don't front-load
   the budget ([MCP spec 2025-06-18][mcp]). Add **Streamable HTTP** transport alongside stdio for
@@ -214,7 +214,11 @@ Dependency-free JSON-RPC 2.0. Current tools (built), all token-budgeted (≤25 r
 
 ---
 
-## 7. CONSUME plane — the issue→code loop (FR-9)
+## 7. CONSUME plane — the issue→code loop (FR-9) · ⏸ DEFERRED
+
+> This plane is **out of current scope** (see `spec.md §7`). It is documented so the KB above is
+> built to support it cleanly later — as a downstream consumer that only talks to the MCP tools,
+> requiring no rework of the KB. Skip on a first read focused on the knowledge base itself.
 
 The reproducible spine is **localize → repair → validate** ([Agentless][agentless]); the KB
 makes each step cheaper/more accurate.
@@ -270,7 +274,8 @@ supervision.
 | summary firewall | ✅ preview-keyed | `kb/incremental.py` |
 | MCP server (8 tools, joined) | ✅ | `kb/mcp_server.py` |
 | L3 recipe schema + find_recipe | ◐ stub + keyword | `fixtures/recipes/`, `kb/mcp_server.py` |
-| tests index, scip-clang tier, per-symbol L2, derived-fact invalidation, entailment harness, prior-fix memory, localize/validate, Jira adapter | ❌ | *to build — see `implement.md`* |
+| per-symbol L2, eval/entailment harness, scip-clang tier, derived-fact invalidation, tests index, review workflow, L3 semantic | ❌ current scope | *to build — see `implement.md`* |
+| issue→code loop (localize/repair/validate), prior-fix memory, Jira adapter | ⏸ deferred | *future consumer — §7* |
 
 ---
 
