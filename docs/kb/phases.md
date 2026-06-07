@@ -50,7 +50,7 @@ Gaps: **G5, G7, G6** + generic retrieval.
 **Exit gate**
 - [x] M1.1 per-symbol summary served via `find_symbol` (`scope=="symbol"`, lint-clean on ORT) ✅
 - [x] M1.2 `relevant_code` returns top-5 with evidence; relevance measured ✅
-- [x] M1.3 eval harness ✅ (runs on real ORT: lint-clean 100%, entailment 53% — a finding, below the 85% target; coverage tracked). Threshold-gating in CI pending more L2 coverage.
+- [x] M1.3 eval harness ✅ + **entailment gate** (`--entail`): raised entailment **53% → 87.5%** on real ORT clip (clears the 85% SLO; 1 unfixable summary quarantined). CI threshold-gating pending broader coverage.
 - [x] M1.4 derived-fact invalidation ✅ (incremental L1 edges by caller-file ownership; `compute_dirty` cascade wired via `plan_rebuild`; validated on real ORT)
 
 ---
