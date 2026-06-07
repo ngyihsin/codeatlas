@@ -107,7 +107,8 @@ def main(argv: list[str]) -> int:
     sym_names = None
     if "--symbols" in argv:
         sp = argv[argv.index("--symbols") + 1]
-        sym_names = {json.loads(l).get("name") for l in open(sp) if l.strip()}
+        sym_names = {json.loads(l).get("name")
+                     for l in open(sp, encoding="utf-8") if l.strip()}
 
     records = _load_records(path)
     total_err = 0

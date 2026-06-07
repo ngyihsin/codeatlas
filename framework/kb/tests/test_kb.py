@@ -650,6 +650,24 @@ def test_l2_entailment_gate_quarantines_unfixable(tmp_path):
     assert rep["quarantined"] >= 1
 
 
+def test_l2_quarantined_not_reshipped_on_cache_hit(tmp_path):
+    # a summary that always fails lint (cites a non-existent line) must stay quarantined
+    # on a second, cache-hit run -- never silently promoted into summaries.jsonl.
+    bluff = lambda p, a: '{"fold":"x","preview":"p","full":"claims [L999]","evidence_level":"code"}'
+    code = tmp_path / "code"; code.mkdir(); (code / "a.cc").write_text("int x;\n")
+    out = tmp_path / "l2"
+    r1 = l2.build(str(tmp_path), str(code), str(out),
+                  backend=l2.MockBackend(bluff), attempts=1)
+    assert r1["quarantined"] >= 1
+    r2 = l2.build(str(tmp_path), str(code), str(out),     # unchanged source -> cache hit
+                  backend=l2.MockBackend(bluff), attempts=1)
+    assert r2["cached"] >= 1
+    shipped = [json.loads(l) for l in open(out / "summaries.jsonl") if l.strip()]
+    quarantined = [json.loads(l) for l in open(out / "quarantine.jsonl") if l.strip()]
+    assert all(s.get("path") != "a.cc" for s in shipped)      # not in the trusted set
+    assert any(s.get("path") == "a.cc" for s in quarantined)  # still quarantined
+
+
 def test_eval_coverage():
     syms = [{"id": "a", "kind": "function", "importance": 0.9},
             {"id": "b", "kind": "function", "importance": 0.1}]

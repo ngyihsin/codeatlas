@@ -361,6 +361,30 @@ def build(l1_dir: str, code_root: str, out_dir: str, *, backend: Backend,
     children_by_dir: dict[str, list[dict]] = {}
     stats = {"generated": 0, "cached": 0, "quarantined": 0}
 
+    def _resolve(ident, h, gen):
+        """(summary, status, errors): from cache when the hash matches, else generate.
+        Cache entries carry their status so a hit re-routes exactly as the first run did
+        — a quarantined summary is never silently reclassified as clean."""
+        cached = cache.get(ident)
+        if use_incremental and cached and cached.get("hash") == h:
+            stats["cached"] += 1
+            return cached["summary"], cached.get("status", "clean"), cached.get("errors", [])
+        res = gen()
+        stats["generated" if res.status == "clean" else "quarantined"] += 1
+        return res.summary, res.status, res.errors
+
+    def _emit(ident, h, summary, status, errors):
+        """Record (with status) and route to clean/quarantine. Returns True iff clean.
+        The single gate that keeps quarantined summaries out of the trusted set, even on
+        a cache hit."""
+        new_cache[ident] = {"hash": h, "summary": summary,
+                            "status": status, "errors": errors}
+        if status == "clean":
+            clean.append(summary)
+            return True
+        quarantine.append({**summary, "_errors": errors})
+        return False
+
     files = list(_iter_source_files(code_root, only, max_bytes))
     if limit:
         files = files[:limit]
@@ -368,27 +392,15 @@ def build(l1_dir: str, code_root: str, out_dir: str, *, backend: Backend,
     # ---- leaves: one summary per source file ----
     for rel, full in files:
         source = open(full, encoding="utf-8", errors="ignore").read()
+        nlines = source.count("\n") + 1
         h = incremental.input_hash(source, [])  # leaf: input is its own source
-        cached = cache.get(rel)
-        if use_incremental and cached and cached.get("hash") == h:
-            s = cached["summary"]
-            stats["cached"] += 1
-        else:
-            res = generate_summary(
-                build_leaf_prompt(rel, source), backend=backend, ident=rel,
-                path=rel, source_lines=source.count("\n") + 1,
-                symbol_names=symbol_names, attempts=attempts,
-                entail_source=(source if entail else None))
-            s = res.summary
-            if res.status == "clean":
-                stats["generated"] += 1
-            else:
-                stats["quarantined"] += 1
-                quarantine.append({**s, "_errors": res.errors})
-                new_cache[rel] = {"hash": h, "summary": s}
-                continue
-        new_cache[rel] = {"hash": h, "summary": s}
-        clean.append(s)
+        s, status, errors = _resolve(rel, h, lambda: generate_summary(
+            build_leaf_prompt(rel, source), backend=backend, ident=rel,
+            path=rel, source_lines=nlines,
+            symbol_names=symbol_names, attempts=attempts,
+            entail_source=(source if entail else None)))
+        if not _emit(rel, h, s, status, errors):
+            continue
         children_by_dir.setdefault(os.path.dirname(rel) or ".", []).append(
             {"path": rel, "fold": s.get("fold", ""), "preview": s.get("preview", "")})
 
@@ -397,36 +409,21 @@ def build(l1_dir: str, code_root: str, out_dir: str, *, backend: Backend,
         # the long tail); important symbols additionally get a symbol-scoped summary.
         if granularity == "symbol" and rel in syms_by_path:
             file_syms = syms_by_path[rel]
-            spans = symbol_spans(file_syms, source.count("\n") + 1)
+            spans = symbol_spans(file_syms, nlines)
             ranked = sorted(file_syms, key=lambda x: -x.get("importance", 0.0))[:top_n]
             for sym in ranked:
                 start, end = spans[sym["id"]]
                 sh = incremental.input_hash("\n".join(
                     source.splitlines()[start - 1:end]), [])
-                cs = cache.get(sym["id"])
-                if use_incremental and cs and cs.get("hash") == sh:
-                    ss = cs["summary"]
-                    stats["cached"] += 1
-                else:
-                    r = generate_summary(
-                        build_symbol_prompt(rel, sym["name"], sym.get("kind", ""),
-                                            source, start, end),
-                        backend=backend, ident=sym["id"], path=rel,
-                        source_lines=source.count("\n") + 1,
-                        symbol_names=symbol_names, attempts=attempts,
-                        entail_source=(source if entail else None))
-                    ss = r.summary
-                    ss["scope"] = "symbol"
-                    if r.status == "clean":
-                        stats["generated"] += 1
-                    else:
-                        stats["quarantined"] += 1
-                        quarantine.append({**ss, "_errors": r.errors})
-                        new_cache[sym["id"]] = {"hash": sh, "summary": ss}
-                        continue
+                ss, status, errors = _resolve(sym["id"], sh, lambda: generate_summary(
+                    build_symbol_prompt(rel, sym["name"], sym.get("kind", ""),
+                                        source, start, end),
+                    backend=backend, ident=sym["id"], path=rel,
+                    source_lines=nlines,
+                    symbol_names=symbol_names, attempts=attempts,
+                    entail_source=(source if entail else None)))
                 ss["scope"] = "symbol"
-                new_cache[sym["id"]] = {"hash": sh, "summary": ss}
-                clean.append(ss)
+                _emit(sym["id"], sh, ss, status, errors)
 
     # ---- synthesis: one summary per directory, from child previews ----
     # Firewall keys on previews (sentences), not 20-char folds: a behavior change
@@ -434,25 +431,11 @@ def build(l1_dir: str, code_root: str, out_dir: str, *, backend: Backend,
     for d, kids in sorted(children_by_dir.items()):
         ident = f"module:{d}"
         h = incremental.input_hash("", sorted(k["preview"] for k in kids))
-        cached = cache.get(ident)
-        if use_incremental and cached and cached.get("hash") == h:
-            s = cached["summary"]
-            stats["cached"] += 1
-        else:
-            res = generate_summary(
-                build_synthesis_prompt(d, kids), backend=backend,
-                ident=ident, path=None, source_lines=None,
-                symbol_names=symbol_names, attempts=attempts)
-            s = res.summary
-            if res.status == "clean":
-                stats["generated"] += 1
-            else:
-                stats["quarantined"] += 1
-                quarantine.append({**s, "_errors": res.errors})
-                new_cache[ident] = {"hash": h, "summary": s}
-                continue
-        new_cache[ident] = {"hash": h, "summary": s}
-        clean.append(s)
+        s, status, errors = _resolve(ident, h, lambda: generate_summary(
+            build_synthesis_prompt(d, kids), backend=backend,
+            ident=ident, path=None, source_lines=None,
+            symbol_names=symbol_names, attempts=attempts))
+        _emit(ident, h, s, status, errors)
 
     # ---- write outputs ----
     with open(os.path.join(out_dir, "summaries.jsonl"), "w", encoding="utf-8") as f:
