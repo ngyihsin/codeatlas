@@ -219,7 +219,7 @@ Ranked by leverage on the **KB itself** (current scope). G-IDs are stable (refer
 | ◐ G4 | **Precise call-graph tier** — *ingest done (M2.1)*: `kb/scip_ingest.py` SCIP→precise edges, MCP precedence; **live scip-clang run needs a build (blocked here)** | "what calls this / blast radius" | [scip-clang][scipclang] |
 | ~~G6~~ ✅ | **Derived-fact invalidation** — *done (M1.4)*: incremental L1 edges by caller-file ownership + `compute_dirty` cascade wired | stale edges/summaries → wrong answers | [Glean][glean] |
 | ~~G8~~ ✅ | **Human-review workflow** — *done (M2.2)*: `kb/review.py` promote ladder (draft→reviewed→battle-tested) + evidence anchors | turns the trust ladder from inert to operational | [survey][survey] |
-| **G9** | **L3 recipes: 1 stub, keyword search** | tacit layer is the moat | [GraphRAG][graphrag] |
+| ~~G9~~ ◐ | **L3 semantic search** — *done (M3.1)*: pluggable `Embedder`+vector `find_recipe` (dependency-free default; MiniLM/sqlite-vec drop-ins); 2 recipes | recipe *mining* still a scaffold | [GraphRAG][graphrag] |
 | ~~G2~~ ✅ | **Tests index** — *done (M2.3)*: `tests.jsonl` + `find_tests`; real ORT links Clip→clip_test.cc | "what guards this code?" (and later, regression safety) | [regression][regress] |
 | **G10** | **MCP: no pagination/resources, single transport** | budget + scale | [MCP spec][mcp] |
 

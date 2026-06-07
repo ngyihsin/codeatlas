@@ -103,7 +103,7 @@ Gaps: **G9, G10, freshness SLO**.
   `initialize`/`tools/call`; drift sampler flags an intentionally-stale node.
 
 **Exit gate**
-- [ ] M3.1 paraphrase retrieves the right recipe (not keyword)
+- [x] M3.1 paraphrase retrieves the right recipe ✅ (vector search; 'introduce a new kernel'→add-an-op, 'wrong fp16'→fix-a-dispatch-bug)
 - [ ] M3.2 paginated `find_symbol` within budget + `nextCursor`; HTTP transport answers JSON-RPC
 - [ ] M3.2 silent-truncation bug fixed (truncated result carries a cursor)
 - [ ] M3.3 drift sampler flags an intentionally-stale node

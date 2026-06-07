@@ -155,8 +155,18 @@ class KB:
         return out
 
     def find_recipe(self, task: str) -> list[dict]:
-        # keyword match over task/when/title; spec: upgrade to semantic search over L3.
-        q = set(task.lower().split())
+        # Semantic (vector) search over the L3 recipe layer; keyword as graceful fallback.
+        if getattr(self, "_recipe_index", None) is None:
+            try:
+                from .recipes import RecipeIndex
+                self._recipe_index = RecipeIndex(self.recipes)
+            except Exception:
+                self._recipe_index = False
+        if self._recipe_index:
+            hits = self._recipe_index.search(task, k=3)
+            if hits:
+                return hits
+        q = set(task.lower().split())          # fallback: keyword over title/task/when
         scored = []
         for r in self.recipes:
             hay = " ".join(str(r.get(k, "")) for k in ("title", "task", "when")).lower()

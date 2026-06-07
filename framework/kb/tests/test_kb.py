@@ -11,11 +11,18 @@ from kb import l1, lint, incremental, l2, retrieve          # noqa: E402
 from kb import eval as kbeval                               # noqa: E402
 from kb import review                                       # noqa: E402
 from kb import scip_ingest                                  # noqa: E402
+from kb import recipes as kbrecipes                         # noqa: E402
 from kb.mcp_server import KB, handle                        # noqa: E402
 
 FIX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fixtures", "mini-runtime")
 FIX = os.path.abspath(FIX)
 HAS_CTAGS = shutil.which("ctags") is not None
+RECIPES = os.path.abspath(os.path.join(FIX, "..", "recipes"))
+try:
+    import yaml as _yaml                                     # noqa: F401
+    HAS_YAML = True
+except ImportError:
+    HAS_YAML = False
 
 
 # ------------------------------------------------------------------- L1 ops
@@ -90,6 +97,39 @@ def test_firewall_stops_cascade():
     assert incremental.compute_dirty({"c"}, edges, fold_changed={"c"}) == {"b", "c"}
     # full cascade when every fold changes
     assert incremental.compute_dirty({"c"}, edges, fold_changed={"a", "b", "c"}) == {"a", "b", "c"}
+
+
+# ---------------------------------------------------- M3.1 recipe semantic search
+def test_recipe_hash_embedder_is_normalized_and_deterministic():
+    import math as _m
+    e = kbrecipes.HashEmbedder(dim=64)
+    v = e.embed("add a new operator kernel")
+    assert abs(_m.sqrt(sum(x * x for x in v)) - 1.0) < 1e-9
+    assert e.embed("clip clamp") == e.embed("clip clamp")
+
+
+def test_recipe_index_ranks_by_intent():
+    recs = [
+        {"id": "add-an-op", "title": "Add a new operator to a backend",
+         "task": "add op register kernel", "when": "new operator needed"},
+        {"id": "fix-a-dispatch-bug", "title": "Diagnose wrong-output dispatch bug",
+         "task": "fix dispatch wrong output type mismatch",
+         "when": "op produces wrong results for some dtype"},
+    ]
+    idx = kbrecipes.RecipeIndex(recs)
+    assert idx.search("introduce a new operator kernel")[0]["id"] == "add-an-op"
+    assert idx.search("wrong output for a dtype, dispatch")[0]["id"] == "fix-a-dispatch-bug"
+
+
+@pytest.mark.skipif(not HAS_YAML, reason="PyYAML not installed")
+def test_find_recipe_semantic_via_mcp(tmp_path):
+    kbdir = tmp_path / "kb"
+    (kbdir / "recipes").mkdir(parents=True)
+    for fn in ("add-an-op.yaml", "fix-a-dispatch-bug.yaml"):
+        shutil.copy(os.path.join(RECIPES, fn), kbdir / "recipes")
+    kb = KB(str(kbdir))
+    assert kb.find_recipe("introduce a new kernel into a backend")[0]["id"] == "add-an-op"
+    assert kb.find_recipe("op gives wrong output for fp16")[0]["id"] == "fix-a-dispatch-bug"
 
 
 # --------------------------------------------------- M2.1 scip-clang precise tier
