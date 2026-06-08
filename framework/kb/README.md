@@ -8,6 +8,37 @@ It is an **ETL pipeline, not a doc set** — judged on token cost + freshness.
 > Dependency-light: Python 3.9+, `PyYAML`; `universal-ctags` + `ripgrep` for L1. No vector DB
 > over source code (by design — see the spec's retrieval ruling).
 
+## Try it in 2 minutes (no agent, no network)
+
+The repo ships a tiny C++ fixture (`fixtures/mini-runtime/`) so you can build and query a
+real KB without ONNX Runtime or an LLM. Needs `universal-ctags` + `ripgrep` on PATH and
+`pip install pyyaml`.
+
+```bash
+cd framework/kb
+
+# 1. Build L1 (symbols, call graph, op registry, tests index) over the fixture
+python -m kb.l1 build fixtures/mini-runtime /tmp/demo_kb
+#  -> {"symbols": 17, "edges": 10, "ops": 4, "tests": 4, ...}   writes /tmp/demo_kb/*.jsonl
+
+# 2. Query it programmatically (this is exactly what the MCP tools call under the hood)
+python - <<'PY'
+from kb.mcp_server import KB
+kb = KB("/tmp/demo_kb")
+print(kb.find_op("Add"))                              # Add @ cpu/elementwise_ops.cc:23
+print(kb.find_symbol("AddCompute", detail="preview"))
+PY
+
+# 3. Or drive it as an MCP server over stdio (JSON-RPC, one message per line)
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"find_op","arguments":{"name":"Relu"}}}' \
+  | KB_DIR=/tmp/demo_kb python -m kb.mcp_server
+```
+
+That's the core loop: **build → query**. L2 summaries (English explanations) are the one
+step that needs an agent backend — see *Running on your own codebase* below.
+
 ## What it provides (and how it maps to the gap table)
 
 | Layer / gap | Module | CLI | Status |
@@ -86,23 +117,47 @@ Covers ONNX Runtime (`ONNX_(CPU_)?OPERATOR_(VERSIONED_)?(TYPED_)?KERNEL(_EX)?`),
 python -m kb.l1 ops /path/to/onnxruntime/core/providers/cpu -   # prints ops.jsonl
 ```
 
-## Quick start
+## Running on your own codebase
 
+```bash
+cd framework/kb
+CODE=/path/to/onnxruntime/onnxruntime/core/providers/cpu    # any C/C++ tree
+
+# 1. L1 — mechanical structure (fast, no LLM): symbols, edges, ops, tests, module_map
+python -m kb.l1 build $CODE /tmp/kb
+
+# 2. L2 — English summaries. This is the step that needs an agent backend:
+#      --backend claude                    spawns headless `claude`
+#      --backend cmd --cmd "your-agent {prompt}"   bring your own model
+python -m kb.l2 build /tmp/kb $CODE /tmp/kb --backend claude \
+       --granularity symbol --only math/ --limit 20
+#      add --entail for the per-claim entailment gate (higher faithfulness, more LLM calls)
+
+# 3. Check / measure / serve
+python -m kb.lint /tmp/kb/summaries.jsonl --code $CODE --symbols /tmp/kb/symbols.jsonl
+python -m kb.eval run /tmp/kb/summaries.jsonl --code $CODE --backend claude   # entailment %
+KB_DIR=/tmp/kb python -m kb.mcp_server                       # serve to an agent over MCP
+
+# 4. Trust & freshness
+python -m kb.review promote /tmp/kb <symbol-id> --to reviewed --owner you
+python -m kb.drift  sample  /tmp/kb $CODE                    # fresh_rate SLO
+python -m kb.mine_recipes /path/to/repo                      # candidate L3 recipes from git log
 ```
-python -m kb.l1 build  <codebase> <out_dir>     # symbols/edges/ops/module_map
-python -m kb.l2 build  <out_dir> <codebase> <l2_dir> --backend claude   # generate summaries
-python -m kb.lint      summaries.jsonl --code <codebase> --symbols <out_dir>/symbols.jsonl
-KB_DIR=<out_dir> python -m kb.mcp_server        # then speak MCP JSON-RPC on stdin
-python -m kb.l2 build  <out_dir> <codebase> <l2_dir> --backend claude --granularity symbol
-python -m pytest -q                             # 45 tests
-```
+
+Optional upgrades (graceful fallback if absent): set `KB_MINILM_DIR` to a MiniLM/ONNX model
+dir for semantic recipe search (`scripts/fetch_minilm.sh` lays one out); provide a
+`compile_commands.json` to add precise scip-clang edges (`python -m kb.scip_ingest build`).
+
+Run the tests: `python -m pytest -q`  (56 pass; 1 skipped without scip-clang).
 
 ## Verification (production-quality gate)
 
-- **`pytest`: 45/45 pass** (ops extraction, pagerank distribution, lint good/bad, hash
-  stability, firewall cascade, MCP tools, unknown-tool error, L2 generate / self-repair /
-  quarantine / incremental-skip, **end-to-end generator→MCP wiring + L1-only fallback**). L2
-  tests use a deterministic `MockBackend` — CI never spawns an agent or hits the network.
+- **`pytest`: 56 pass, 1 skipped** (ops extraction, pagerank distribution, lint good/bad, hash
+  stability, firewall cascade, MCP tools + pagination, L2 generate / self-repair / quarantine /
+  entailment-gate / cache-integrity, scip innermost-caller, embedder + recipe mining, **end-to-end
+  generator→MCP wiring + L1-only fallback**). The one skip is the live scip-clang test when the
+  binary is absent. L2/eval tests use a deterministic `MockBackend` — CI never spawns an agent or
+  hits the network.
 - **Real-source run:** the op matcher extracted **378 registrations / 123 distinct ops** from a
   sparse checkout of ONNX Runtime's CPU provider (`Conv`, `Gemm`, `MatMul`, `Softmax`, …) with
   correct versions + `file:line` anchors.
@@ -126,15 +181,32 @@ python -m pytest -q                             # 45 tests
   agent per node and self-repairs against the lint. The remaining work is human: module owners
   promote `draft` → `reviewed` (the lint guarantees claims are *anchored*, not that they are
   *right* — citation existence is machine-checkable; citation accuracy is the review's job).
-- **L3 / find_recipe:** keyword match today; the spec's one sanctioned place for **semantic
-  search** (over recipes, never raw source) is the upgrade.
+- **L3 / find_recipe:** vector search over the recipe layer (the spec's one sanctioned place for
+  **semantic search** — over recipes, never raw source), with a real MiniLM/ONNX embedder behind
+  `KB_MINILM_DIR` and a dependency-free hashing embedder as the default/fallback; `kb.mine_recipes`
+  seeds candidate recipes from git history. sqlite-vec stays a future drop-in (brute-force cosine
+  is exact at recipe scale).
 
 ## Layout
 ```
 framework/kb/
-  registration_patterns.yaml   # op macros per framework (data-driven)
-  kb/l1.py kb/l2.py kb/lint.py kb/incremental.py kb/mcp_server.py
+  registration_patterns.yaml    # op macros per framework (data-driven)
+  kb/
+    l1.py            # L1: ops/symbols/edges/tests/pagerank/churn + incremental build
+    l2.py            # L2: agent-per-node summary generator + lint/entailment self-repair loop
+    lint.py          # L2 evidence lint (fold size, [Lxx] required, in-range refs)
+    incremental.py   # content-hash + fold firewall; dirty-set cascade (plan_rebuild)
+    retrieve.py      # relevant_code: hybrid lexical + graph + importance retrieval
+    eval.py          # faithfulness harness: claim-decompose + per-claim entailment, coverage
+    review.py        # human-review ladder: draft -> reviewed -> battle-tested + evidence anchors
+    drift.py         # freshness sampler (fresh_rate SLO; flags silent staleness)
+    recipes.py       # L3 vector search (get_embedder: MiniLM/ONNX or HashEmbedder)
+    embed.py         # MiniLM/ONNX embedder + self-contained WordPiece tokenizer
+    mine_recipes.py  # mine candidate L3 recipes from git history
+    scip_ingest.py   # precise (xref:precise) call-graph tier from scip-clang
+    mcp_server.py    # MCP 2025-06-18 server: 10 tools + resources + pagination (stdio/HTTP)
+  scripts/fetch_minilm.sh       # lay out KB_MINILM_DIR from allowlisted URLs (route B)
   fixtures/mini-runtime/        # tiny C++ exercising each op macro (deterministic tests)
-  fixtures/recipes/add-an-op.yaml
-  tests/test_kb.py
+  fixtures/recipes/*.yaml       # seed L3 recipes (add-an-op, fix-a-dispatch-bug)
+  tests/test_kb.py              # 56 tests
 ```
