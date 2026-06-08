@@ -122,6 +122,20 @@ symbols/call-graph/PageRank, the L2 evidence lint, the incremental hash + fold-f
 token-budgeted MCP retrieval server — verified by `pytest` and a real ONNX Runtime run (378 op
 registrations extracted).
 
+Try it on the bundled C++ fixture (needs `universal-ctags` + `ripgrep`; no LLM or network):
+
+```bash
+cd framework/kb
+python -m kb.l1 build fixtures/mini-runtime /tmp/demo_kb     # build L1 artifacts
+python - <<'PY'                                              # query like the MCP tools do
+from kb.mcp_server import KB
+print(KB("/tmp/demo_kb").find_op("Add"))                     # Add @ cpu/elementwise_ops.cc:23
+PY
+```
+
+See `framework/kb/README.md` for the full build → L2 → lint/eval → serve → review/drift/mine
+flow and how to point it at your own codebase.
+
 ## How the Process Works
 
 The onboarding follows six phases. Unlike docforge, **understanding is never "complete"** — phases can be revisited, and the checklist tracks ongoing progress rather than a one-shot init.
