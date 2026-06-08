@@ -5,17 +5,23 @@ machine-readable, human-reviewed knowledge layer over large C/C++ ML-runtime cod
 "digital colleagues" can locate code and apply the institutional knowledge needed to change it.
 It is an **ETL pipeline, not a doc set** — judged on token cost + freshness.
 
-> Dependency-light: Python 3.9+, `PyYAML`; `universal-ctags` + `ripgrep` for L1. No vector DB
-> over source code (by design — see the spec's retrieval ruling).
+> Dependency-light: Python 3.9+, `PyYAML` (`requirements.txt`); `universal-ctags` + `ripgrep`
+> for L1; optional `numpy`+`onnxruntime` for the MiniLM embedder (`requirements-minilm.txt`).
+> No vector DB over source code (by design — see the spec's retrieval ruling).
 
 ## Try it in 2 minutes (no agent, no network)
 
 The repo ships a tiny C++ fixture (`fixtures/mini-runtime/`) so you can build and query a
-real KB without ONNX Runtime or an LLM. Needs `universal-ctags` + `ripgrep` on PATH and
-`pip install pyyaml`.
+real KB without ONNX Runtime or an LLM.
 
 ```bash
 cd framework/kb
+
+# 0. Setup. System tools (not pip): universal-ctags + ripgrep on PATH.
+#    Python deps in a virtualenv:
+python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
+pip install -r requirements.txt                      # PyYAML (the only core dep)
+#    optional real MiniLM embedder: pip install -r requirements-minilm.txt
 
 # 1. Build L1 (symbols, call graph, op registry, tests index) over the fixture
 python -m kb.l1 build fixtures/mini-runtime /tmp/demo_kb

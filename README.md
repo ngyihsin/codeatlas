@@ -126,6 +126,8 @@ Try it on the bundled C++ fixture (needs `universal-ctags` + `ripgrep`; no LLM o
 
 ```bash
 cd framework/kb
+python -m venv .venv && source .venv/bin/activate           # virtualenv
+pip install -r requirements.txt                             # PyYAML (only core dep)
 python -m kb.l1 build fixtures/mini-runtime /tmp/demo_kb     # build L1 artifacts
 python - <<'PY'                                              # query like the MCP tools do
 from kb.mcp_server import KB
