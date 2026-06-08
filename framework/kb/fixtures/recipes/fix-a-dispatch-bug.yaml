@@ -1,0 +1,20 @@
+id: fix-a-dispatch-bug
+title: Diagnose a wrong-output bug in operator dispatch / type selection
+task: fix dispatch bug | wrong output | type mismatch | kernel not selected
+when: an op produces wrong results or picks the wrong typed kernel for some dtype
+confidence: draft
+decision_points:
+  - q: Does the wrong output only happen for a specific dtype (e.g. fp16)?
+    yes: suspect a missing typed-kernel registration or a fallback that downcasts
+    no: suspect the compute logic itself; add a reproduction unit test first
+  - q: Is the op registered for the requested opset version range?
+    yes: check the versioned-kernel bounds against the model's opset
+    no: the dispatcher fell through to a default — register the missing version
+steps:
+  - Reproduce with a minimal failing test (the regression set from the tests index).
+  - Locate the kernel registration via the op registry (find_op) and its typed variants.
+  - Compare the selected kernel's dtype constraints against the failing input.
+  - Fix the registration or compute path; confirm no PASS-to-PASS regressions.
+pitfalls:
+  - An fp16 path silently falling back to fp32 looks correct in tests that only check tolerance.
+  - Versioned-kernel end bounds are inclusive/exclusive — off-by-one drops a whole opset.

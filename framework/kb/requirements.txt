@@ -1,0 +1,12 @@
+# kb — core Python dependencies (Python 3.9+)
+#
+#   python -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt
+#
+# System tools used by L1 are NOT pip-installable — install them with your OS
+# package manager: `universal-ctags` and `ripgrep` (e.g. apt-get install
+# universal-ctags ripgrep  /  brew install universal-ctags ripgrep).
+#
+# Optional extras live in requirements-minilm.txt (real MiniLM/ONNX embedder).
+
+PyYAML>=6.0

@@ -1,0 +1,10 @@
+# kb — optional extras for the real MiniLM/ONNX recipe embedder.
+#
+#   pip install -r requirements.txt -r requirements-minilm.txt
+#
+# Without these, L3 recipe search transparently falls back to the dependency-free
+# HashEmbedder (see kb/embed.py). Install only if you set KB_MINILM_DIR to a real
+# sentence-transformer ONNX model (see scripts/fetch_minilm.sh).
+
+numpy>=1.21
+onnxruntime>=1.16
