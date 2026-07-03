@@ -785,3 +785,58 @@ def test_mine_recipes_clusters_by_area():
 def test_mine_recipes_min_cluster_filters_noise():
     commits = [{"sha": "z" * 16, "subject": "one off", "files": ["a/b/c.cc"]}]
     assert mine_recipes.mine(commits, min_cluster=3) == []
+
+
+# ------------------------------------------------------- compdb auto-derivation
+from kb import compdb as kbcompdb                            # noqa: E402
+
+HAS_CMAKE = shutil.which("cmake") is not None
+
+
+def test_compdb_detect_build_systems(tmp_path):
+    assert kbcompdb.detect(FIX) == "cmake"           # fixture ships a CMakeLists.txt
+    (tmp_path / "Makefile").write_text("all:\n\tcc -c a.c\n")
+    assert kbcompdb.detect(str(tmp_path)) == "make"
+    assert kbcompdb.detect(str(tmp_path / "..")) in (None, "make", "cmake")
+
+
+@pytest.mark.skipif(not HAS_CMAKE, reason="cmake not installed")
+def test_compdb_cmake_configure_only(tmp_path):
+    res = kbcompdb.ensure(FIX, str(tmp_path))
+    assert res["method"] == "cmake-configure" and res["entries"] == 4
+    entries = json.load(open(res["compdb"]))
+    files = {os.path.basename(e["file"]) for e in entries}
+    assert "elementwise_ops.cc" in files
+    # configure-only: no object files were produced (nothing compiled)
+    assert not [f for f in os.listdir(os.path.join(str(tmp_path), "_compdb_build"))
+                if f.endswith(".o")]
+
+
+def test_compdb_make_dry_run_parser_is_pure():
+    out = ("echo building\n"
+           "cc -Iinclude -DFOO=1 -c src/a.c -o a.o\n"
+           "clang++ -std=c++17 -c src/b.cc -o b.o\n"
+           "ar rcs lib.a a.o b.o\n")
+    entries = kbcompdb.parse_make_output(out, "/repo")
+    assert [e["file"] for e in entries] == ["src/a.c", "src/b.cc"]
+    assert all(e["directory"] == "/repo" for e in entries)
+
+
+def test_compdb_synthesized_fallback_is_tagged(tmp_path):
+    src = tmp_path / "proj"
+    (src / "include").mkdir(parents=True)
+    (src / "src").mkdir()
+    (src / "src" / "a.cc").write_text("int f(){return 1;}\n")
+    res = kbcompdb.ensure(str(src), str(tmp_path / "out"))
+    assert res["method"] == "synthesized" and res["entries"] == 1
+    entry = json.load(open(res["compdb"]))[0]
+    assert entry["arguments"][0] == "clang++"                 # C++ source
+    assert any(a.endswith("include") for a in entry["arguments"])  # guessed -I
+
+
+@pytest.mark.skipif(not HAS_CMAKE, reason="cmake not installed")
+def test_scip_build_auto_resolves_compdb(tmp_path):
+    path, method = scip_ingest.resolve_compdb(FIX, "auto", str(tmp_path))
+    assert method == "cmake-configure" and os.path.isfile(path)
+    explicit, method2 = scip_ingest.resolve_compdb(FIX, "/x/cc.json", str(tmp_path))
+    assert (explicit, method2) == ("/x/cc.json", "user-supplied")

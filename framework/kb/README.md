@@ -62,7 +62,7 @@ step that needs an agent backend — see *Running on your own codebase* below.
 | **Drift sampler** | `kb/drift.py` | `python -m kb.drift sample <kb> <code>` | ✅ fresh_rate SLO; flags silent staleness |
 | **L3 recipe semantic search** | `kb/recipes.py` + `kb/embed.py` + `find_recipe` | via MCP | ✅ vector search; **MiniLM/ONNX embedder** (`KB_MINILM_DIR`, HashEmbedder fallback); sqlite-vec still a future drop-in |
 | **L3 recipe mining** | `kb/mine_recipes.py` | `python -m kb.mine_recipes <repo>` | ✅ clusters git history into candidate `draft` recipes for review |
-| **Precise call-graph tier** | `kb/scip_ingest.py` | `python -m kb.scip_ingest from-json …` | ✅ live scip-clang validated; innermost-scope caller resolution; ORT-scale run needs a build |
+| **Precise call-graph tier** | `kb/scip_ingest.py` + `kb/compdb.py` | `python -m kb.scip_ingest build <code> auto <out>` | ✅ live scip-clang validated; innermost-scope caller resolution; `auto` derives `compile_commands.json` itself (CMake configure-only / Meson / make dry-run / synthesized fallback) |
 
 ## The L2 generator (`kb/l2.py`)
 
@@ -151,17 +151,22 @@ python -m kb.mine_recipes /path/to/repo                      # candidate L3 reci
 ```
 
 Optional upgrades (graceful fallback if absent): set `KB_MINILM_DIR` to a MiniLM/ONNX model
-dir for semantic recipe search (`scripts/fetch_minilm.sh` lays one out); provide a
-`compile_commands.json` to add precise scip-clang edges (`python -m kb.scip_ingest build`).
+dir for semantic recipe search (`scripts/fetch_minilm.sh` lays one out); add precise
+clang-grade edges with `python -m kb.scip_ingest build $CODE auto /tmp/kb` — `auto` makes
+`kb.compdb` derive `compile_commands.json` from the tree's own build system (CMake
+**configure-only**, no compilation; Meson; `make -n` dry-run; or a flag-guessed synthesized
+fallback, honestly tagged) so there is no manual build step. Needs `scip-clang` + `scip`
+on PATH for the indexing itself.
 
-Run the tests: `python -m pytest -q`  (56 pass; 1 skipped without scip-clang).
+Run the tests: `python -m pytest -q`  (61 pass; 1 skipped without scip-clang).
 
 ## Verification (production-quality gate)
 
-- **`pytest`: 56 pass, 1 skipped** (ops extraction, pagerank distribution, lint good/bad, hash
+- **`pytest`: 61 pass, 1 skipped** (ops extraction, pagerank distribution, lint good/bad, hash
   stability, firewall cascade, MCP tools + pagination, L2 generate / self-repair / quarantine /
-  entailment-gate / cache-integrity, scip innermost-caller, embedder + recipe mining, **end-to-end
-  generator→MCP wiring + L1-only fallback**). The one skip is the live scip-clang test when the
+  entailment-gate / cache-integrity, scip innermost-caller, compdb auto-derivation (cmake
+  configure-only / make dry-run parser / synthesized fallback), embedder + recipe mining,
+  **end-to-end generator→MCP wiring + L1-only fallback**). The one skip is the live scip-clang test when the
   binary is absent. L2/eval tests use a deterministic `MockBackend` — CI never spawns an agent or
   hits the network.
 - **Real-source run:** the op matcher extracted **378 registrations / 123 distinct ops** from a
@@ -180,9 +185,11 @@ Run the tests: `python -m pytest -q`  (56 pass; 1 skipped without scip-clang).
 - **Path naming:** the spec writes `.codeatlas/`; this framework now uses `.docforge/` — treat
   them as the same cache location.
 - **L1 extractor:** the spec prefers tree-sitter + clangd (scope-accurate, macro expansion).
-  This prototype uses **ctags + a macro matcher + a heuristic call graph** (tagged
-  `xref:partial`, exactly the spec's pragmatic fallback). Upgrade path: clangd via
-  `compile_commands.json` for an accurate call graph; tree-sitter for richer structure.
+  The default tier uses **ctags + a macro matcher + a heuristic call graph** (tagged
+  `xref:partial`, exactly the spec's pragmatic fallback). The clang-grade tier is
+  **scip-clang** (same Clang frontend as clangd, but emits a persistable index), and
+  `kb.compdb` derives the `compile_commands.json` it needs from the tree's own build system —
+  no manual build step. Remaining upgrade: tree-sitter for richer structure.
 - **L2 summaries:** lint + schema + the **generator** (`kb/l2.py`) are all here — it spawns an
   agent per node and self-repairs against the lint. The remaining work is human: module owners
   promote `draft` → `reviewed` (the lint guarantees claims are *anchored*, not that they are
@@ -209,10 +216,11 @@ framework/kb/
     recipes.py       # L3 vector search (get_embedder: MiniLM/ONNX or HashEmbedder)
     embed.py         # MiniLM/ONNX embedder + self-contained WordPiece tokenizer
     mine_recipes.py  # mine candidate L3 recipes from git history
+    compdb.py        # derive compile_commands.json (cmake configure-only/meson/make -n/synth)
     scip_ingest.py   # precise (xref:precise) call-graph tier from scip-clang
     mcp_server.py    # MCP 2025-06-18 server: 10 tools + resources + pagination (stdio/HTTP)
   scripts/fetch_minilm.sh       # lay out KB_MINILM_DIR from allowlisted URLs (route B)
   fixtures/mini-runtime/        # tiny C++ exercising each op macro (deterministic tests)
   fixtures/recipes/*.yaml       # seed L3 recipes (add-an-op, fix-a-dispatch-bug)
-  tests/test_kb.py              # 56 tests
+  tests/test_kb.py              # 61 tests
 ```

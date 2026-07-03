@@ -100,10 +100,23 @@ def _write(out_dir: str, symbols: list[dict], edges: list[dict]) -> dict:
     return {"symbols": len(symbols), "precise_edges": len(edges), "out": out_dir}
 
 
+def resolve_compdb(code_root: str, compdb: str, out_dir: str) -> tuple[str, str]:
+    """Resolve the *compdb* CLI arg to (path, method). ``auto`` derives one via
+    kb.compdb from the tree's own build system (CMake configure-only / Meson /
+    make dry-run / synthesized fallback) — no manual build step needed."""
+    if compdb != "auto":
+        return compdb, "user-supplied"
+    from kb import compdb as _compdb
+    derived = _compdb.ensure(code_root, out_dir)
+    return derived["compdb"], derived["method"]
+
+
 def build(code_root: str, compdb: str, out_dir: str) -> dict:
-    """Run scip-clang + scip, then ingest. Requires both binaries on PATH."""
+    """Run scip-clang + scip, then ingest. Requires both binaries on PATH.
+    Pass ``auto`` as *compdb* to derive it automatically (see resolve_compdb)."""
     if not os.path.isdir(code_root):
         raise SystemExit(f"code_root not found: {code_root}")
+    compdb, compdb_method = resolve_compdb(code_root, compdb, out_dir)
     if not os.path.isfile(compdb):
         raise SystemExit(f"compile_commands.json not found: {compdb}")
     if not shutil.which("scip-clang"):
@@ -121,14 +134,17 @@ def build(code_root: str, compdb: str, out_dir: str) -> dict:
     jtxt = subprocess.run(["scip", "print", "--json", scip_path],
                           capture_output=True, text=True, check=True).stdout
     symbols, edges = parse_index(json.loads(jtxt))
-    return _write(out_dir, symbols, edges)
+    res = _write(out_dir, symbols, edges)
+    res["compdb_method"] = compdb_method   # 'synthesized' = flag-guessed, not full fidelity
+    return res
 
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="kb.scip_ingest")
     sub = ap.add_subparsers(dest="subcmd", required=True)
     fj = sub.add_parser("from-json"); fj.add_argument("index_json"); fj.add_argument("out_dir")
-    bd = sub.add_parser("build"); bd.add_argument("code_root"); bd.add_argument("compdb")
+    bd = sub.add_parser("build"); bd.add_argument("code_root")
+    bd.add_argument("compdb", help="path to compile_commands.json, or 'auto' to derive it")
     bd.add_argument("out_dir")
     a = ap.parse_args(argv)
     if a.subcmd == "from-json":
