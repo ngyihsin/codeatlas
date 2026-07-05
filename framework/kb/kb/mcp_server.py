@@ -47,6 +47,7 @@ class KB:
                                     if (e["caller_id"], e["callee_id"]) not in seen]
         self.ops = self._jsonl("ops.jsonl")
         self.tests = self._jsonl("tests.jsonl")
+        self.build_rows = self._jsonl("build_targets.jsonl")   # kb.buildsys (optional)
         self.recipes = self._recipes()
         # L2: join generated summaries to symbols/files by path (seam fix).
         self.summaries = self._jsonl("summaries.jsonl")
@@ -231,6 +232,23 @@ class KB:
                         "importance": s.get("importance", 0)})
         return out
 
+    def build_info(self, name: str = "") -> list[dict]:
+        # The build system as knowledge (kb.buildsys): targets/options/packages.
+        # No name -> compact overview; name -> matching rows with full detail.
+        if not self.build_rows:
+            return [{"error": "no build_targets.jsonl — run: python -m kb.buildsys "
+                              "<code_root> <kb_dir>"}]
+        if name:
+            q = name.lower()
+            return [r for r in self.build_rows if q in r.get("name", "").lower()]
+        targets = [r for r in self.build_rows if r["kind"] == "target"]
+        return [{"targets": len(targets),
+                 "options": sum(r["kind"] == "option" for r in self.build_rows),
+                 "packages": sum(r["kind"] == "package" for r in self.build_rows),
+                 "fidelity": self.build_rows[0].get("fidelity"),
+                 "method": self.build_rows[0].get("method"),
+                 "target_names": [t["name"] for t in targets]}]
+
 
 TOOLS = [
     {"name": "find_symbol", "description": "Find symbols by name; detail=fold|preview|full.",
@@ -255,6 +273,8 @@ TOOLS = [
      "inputSchema": {"type": "object", "properties": {"recipe_id": {"type": "string"}}, "required": ["recipe_id"]}},
     {"name": "what_changed", "description": "Churn / last-modified for a symbol.",
      "inputSchema": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]}},
+    {"name": "build_info", "description": "Build-system map: targets/deps/options (kb.buildsys).",
+     "inputSchema": {"type": "object", "properties": {"name": {"type": "string"}}}},
     {"name": "review_status", "description": "Verification status for a symbol.",
      "inputSchema": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]}},
 ]

@@ -57,6 +57,8 @@ def from_cmake(code_root: str, out_dir: str) -> str | None:
     if not shutil.which("cmake"):
         return None
     build_dir = os.path.join(out_dir, "_compdb_build")
+    from kb import buildsys
+    buildsys.fileapi_write_query(build_dir)   # same configure also yields the codemodel
     cmd = ["cmake", "-S", code_root, "-B", build_dir,
            "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"]
     if shutil.which("ninja"):

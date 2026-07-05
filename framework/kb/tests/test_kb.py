@@ -840,3 +840,63 @@ def test_scip_build_auto_resolves_compdb(tmp_path):
     assert method == "cmake-configure" and os.path.isfile(path)
     explicit, method2 = scip_ingest.resolve_compdb(FIX, "/x/cc.json", str(tmp_path))
     assert (explicit, method2) == ("/x/cc.json", "user-supplied")
+
+
+# ------------------------------------------------- buildsys: build system as KB
+from kb import buildsys as kbbuildsys                        # noqa: E402
+
+
+def test_buildsys_static_scan_is_pure(tmp_path):
+    (tmp_path / "CMakeLists.txt").write_text(
+        'project(p CXX)\n'
+        'find_package(Threads REQUIRED)\n'
+        'option(USE_FOO "enable foo" ON)\n'
+        'add_library(core STATIC src/a.cc ${EXTRA_SRCS})\n'
+        'add_executable(tool main.cc)\n'
+        'target_link_libraries(tool PRIVATE core Threads::Threads)\n')
+    rows = kbbuildsys.scan_static(str(tmp_path))
+    by = {(r["kind"], r["name"]): r for r in rows}
+    core = by[("target", "core")]
+    assert core["type"] == "library" and "${EXTRA_SRCS}" in core["sources"]  # verbatim
+    assert by[("target", "tool")]["deps"] == ["Threads::Threads", "core"]
+    assert by[("option", "USE_FOO")]["default"] == "ON"
+    assert ("package", "Threads") in by
+    assert all(r["fidelity"] == "partial" for r in rows)      # honesty tag
+
+
+@pytest.mark.skipif(not HAS_CMAKE, reason="cmake not installed")
+def test_buildsys_fileapi_exact_on_fixture(tmp_path):
+    res = kbbuildsys.build(FIX, str(tmp_path))
+    assert res["method"] == "cmake-file-api"
+    rows = [json.loads(l) for l in open(res["out"])]
+    (t,) = [r for r in rows if r["kind"] == "target"]
+    assert t["name"] == "mini_runtime" and t["fidelity"] == "exact"
+    assert len(t["sources"]) == 4
+
+
+def test_buildsys_falls_back_to_static_when_configure_fails(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "CMakeLists.txt").write_text(
+        "cmake_minimum_required(VERSION 3.16)\nproject(p CXX)\n"
+        "find_package(NoSuchPackageEver REQUIRED)\n"
+        "add_library(core a.cc)\n")
+    res = kbbuildsys.build(str(src), str(tmp_path / "out"))
+    assert res["method"] == "static-scan"                     # honest downgrade
+    rows = [json.loads(l) for l in open(res["out"])]
+    assert {"target", "package"} <= {r["kind"] for r in rows}
+
+
+def test_mcp_build_info_tool(tmp_path):
+    rows = [{"kind": "target", "name": "core", "type": "library", "sources": ["a.cc"],
+             "deps": ["dep1"], "method": "cmake-file-api", "fidelity": "exact"},
+            {"kind": "option", "name": "USE_FOO", "default": "ON",
+             "method": "cmake-file-api", "fidelity": "exact"}]
+    with open(tmp_path / "build_targets.jsonl", "w") as f:
+        f.writelines(json.dumps(r) + "\n" for r in rows)
+    kb = KB(str(tmp_path))
+    (ov,) = kb.build_info()
+    assert ov["targets"] == 1 and ov["options"] == 1 and ov["fidelity"] == "exact"
+    assert kb.build_info("core")[0]["deps"] == ["dep1"]
+    empty = KB(str(tmp_path / "nokb")) if (tmp_path / "nokb").mkdir() is None else None
+    assert "error" in empty.build_info()[0]                   # graceful when absent
