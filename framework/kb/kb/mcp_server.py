@@ -48,6 +48,19 @@ class KB:
         self.ops = self._jsonl("ops.jsonl")
         self.tests = self._jsonl("tests.jsonl")
         self.build_rows = self._jsonl("build_targets.jsonl")   # kb.buildsys (optional)
+        # Join build targets to symbols by source path ("which target owns this file?").
+        # File-API sources are relative to the code root already; static-scan sources
+        # are relative to their CMakeLists dir (defined_in). ${VARS} can't be joined.
+        self.target_by_path: dict[str, str] = {}
+        for r in self.build_rows:
+            if r.get("kind") != "target":
+                continue
+            base = os.path.dirname(r.get("defined_in", ""))
+            for src in r.get("sources", []):
+                if "$" in src:
+                    continue
+                p = os.path.normpath(os.path.join(base, src) if base else src)
+                self.target_by_path.setdefault(p, r["name"])
         self.recipes = self._recipes()
         # L2: join generated summaries to symbols/files by path (seam fix).
         self.summaries = self._jsonl("summaries.jsonl")
@@ -101,12 +114,18 @@ class KB:
                     row["scope"] = summ.get("scope", "file")
                     row["evidence_level"] = summ.get("evidence_level")
                     row["confidence"] = summ.get("confidence", "draft")
+                tgt = self.target_by_path.get(s.get("path"))
+                if tgt:  # which build target owns this symbol's file (kb.buildsys)
+                    row["build_target"] = tgt
                 rows.append(row)
             else:  # full
                 row = dict(s)
                 if summ:
                     row["l2"] = {k: summ.get(k) for k in
                                  ("full", "evidence_level", "confidence")}
+                tgt = self.target_by_path.get(s.get("path"))
+                if tgt:
+                    row["build_target"] = tgt
                 rows.append(row)
         return rows
 

@@ -900,3 +900,33 @@ def test_mcp_build_info_tool(tmp_path):
     assert kb.build_info("core")[0]["deps"] == ["dep1"]
     empty = KB(str(tmp_path / "nokb")) if (tmp_path / "nokb").mkdir() is None else None
     assert "error" in empty.build_info()[0]                   # graceful when absent
+
+
+def test_find_symbol_joins_build_target(tmp_path):
+    with open(tmp_path / "symbols.jsonl", "w") as f:
+        f.write(json.dumps({"id": "s1", "name": "AddCompute", "kind": "function",
+                            "path": "src/add.cc", "importance": 0.5}) + "\n")
+    rows = [
+        # static-scan style: sources relative to the CMakeLists dir (defined_in)
+        {"kind": "target", "name": "core", "type": "library", "sources": ["add.cc"],
+         "deps": [], "defined_in": "src/CMakeLists.txt",
+         "method": "static-scan", "fidelity": "partial"},
+        # unexpanded variables must never be joined
+        {"kind": "target", "name": "ghost", "type": "library",
+         "sources": ["${SRCS}"], "deps": [], "defined_in": "src/CMakeLists.txt",
+         "method": "static-scan", "fidelity": "partial"}]
+    with open(tmp_path / "build_targets.jsonl", "w") as f:
+        f.writelines(json.dumps(r) + "\n" for r in rows)
+    kb = KB(str(tmp_path))
+    assert kb.find_symbol("AddCompute", detail="preview")[0]["build_target"] == "core"
+    assert kb.find_symbol("AddCompute", detail="full")[0]["build_target"] == "core"
+    assert "build_target" not in kb.find_symbol("AddCompute", detail="fold")[0]
+    assert "${SRCS}" not in kb.target_by_path       # ${VARS} skipped, not guessed
+
+
+def test_find_symbol_without_buildsys_is_unchanged(tmp_path):
+    with open(tmp_path / "symbols.jsonl", "w") as f:
+        f.write(json.dumps({"id": "s1", "name": "AddCompute", "kind": "function",
+                            "path": "src/add.cc", "importance": 0.5}) + "\n")
+    row = KB(str(tmp_path)).find_symbol("AddCompute", detail="preview")[0]
+    assert "build_target" not in row                # graceful before kb.buildsys runs

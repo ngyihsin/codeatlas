@@ -62,7 +62,7 @@ step that needs an agent backend — see *Running on your own codebase* below.
 | **Drift sampler** | `kb/drift.py` | `python -m kb.drift sample <kb> <code>` | ✅ fresh_rate SLO; flags silent staleness |
 | **L3 recipe semantic search** | `kb/recipes.py` + `kb/embed.py` + `find_recipe` | via MCP | ✅ vector search; **MiniLM/ONNX embedder** (`KB_MINILM_DIR`, HashEmbedder fallback); sqlite-vec still a future drop-in |
 | **L3 recipe mining** | `kb/mine_recipes.py` | `python -m kb.mine_recipes <repo>` | ✅ clusters git history into candidate `draft` recipes for review |
-| **Build-system knowledge** (targets/deps/options) | `kb/buildsys.py` | `python -m kb.buildsys <code> <out>` | ✅ CMake **File API** (exact; same configure-only run as compdb) with a static structural scan fallback (tagged partial); served via `build_info` |
+| **Build-system knowledge** (targets/deps/options) | `kb/buildsys.py` | `python -m kb.buildsys <code> <out>` | ✅ CMake **File API** (exact; same configure-only run as compdb) with a static structural scan fallback (tagged partial); served via `build_info`; joined into `find_symbol` as `build_target` |
 | **Precise call-graph tier** | `kb/scip_ingest.py` + `kb/compdb.py` | `python -m kb.scip_ingest build <code> auto <out>` | ✅ live scip-clang validated; innermost-scope caller resolution; `auto` derives `compile_commands.json` itself (CMake configure-only / Meson / make dry-run / synthesized fallback) |
 
 ## The L2 generator (`kb/l2.py`)
@@ -101,9 +101,10 @@ L2  summaries.jsonl ─────────┤→  KB (join by path)  →  M
 L3  recipes/*.yaml ──────────┘
 ```
 
-- `find_symbol(name, detail=preview)` returns the symbol **and its file's generated L2 summary**
-  (evidence_level + `draft`/`reviewed` confidence), falling back to the bare L1 signature when no
-  summary exists yet — so it degrades gracefully before L2 has run.
+- `find_symbol(name, detail=preview)` returns the symbol, **its file's generated L2 summary**
+  (evidence_level + `draft`/`reviewed` confidence), and — once `kb.buildsys` has run — the
+  **`build_target` that owns the file** ("where do I register my new kernel's .cc"). It falls
+  back to the bare L1 signature when neither exists yet, so it degrades gracefully.
 - `find_op(name)` exposes the op registry (`ops.jsonl`) with `kernel_path:line` anchors.
 - `get_summary(path)` returns a file or `module:<dir>` explanation directly.
 - `review_status(symbol)` reports the real L2 review state, not a hardcoded string.
@@ -160,13 +161,13 @@ clang-grade edges with `python -m kb.scip_ingest build $CODE auto /tmp/kb` — `
 fallback, honestly tagged) so there is no manual build step. Needs `scip-clang` + `scip`
 on PATH for the indexing itself.
 
-Run the tests: `python -m pytest -q`  (65 pass; 1 skipped without scip-clang).
+Run the tests: `python -m pytest -q`  (67 pass; 1 skipped without scip-clang).
 
 ## Verification (production-quality gate)
 
-- **`pytest`: 65 pass, 1 skipped** (ops extraction, pagerank distribution, lint good/bad, hash
+- **`pytest`: 67 pass, 1 skipped** (ops extraction, pagerank distribution, lint good/bad, hash
   stability, firewall cascade, MCP tools + pagination, L2 generate / self-repair / quarantine /
-  entailment-gate / cache-integrity, scip innermost-caller, buildsys (File API / static scan / fallback-on-configure-failure / MCP build_info), compdb auto-derivation (cmake
+  entailment-gate / cache-integrity, scip innermost-caller, buildsys (File API / static scan / fallback-on-configure-failure / MCP build_info / find_symbol build-target join), compdb auto-derivation (cmake
   configure-only / make dry-run parser / synthesized fallback), embedder + recipe mining,
   **end-to-end generator→MCP wiring + L1-only fallback**). The one skip is the live scip-clang test when the
   binary is absent. L2/eval tests use a deterministic `MockBackend` — CI never spawns an agent or
@@ -225,5 +226,5 @@ framework/kb/
   scripts/fetch_minilm.sh       # lay out KB_MINILM_DIR from allowlisted URLs (route B)
   fixtures/mini-runtime/        # tiny C++ exercising each op macro (deterministic tests)
   fixtures/recipes/*.yaml       # seed L3 recipes (add-an-op, fix-a-dispatch-bug)
-  tests/test_kb.py              # 65 tests
+  tests/test_kb.py              # 67 tests
 ```
