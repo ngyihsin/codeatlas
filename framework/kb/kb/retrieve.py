@@ -42,7 +42,12 @@ def relevant_code(query: str, symbols: list[dict], edges: list[dict],
     """Return up to `k` ranked candidates: {anchor, symbol_id, kind, why, evidence,
     precision, summary?}. Deterministic; ties broken by importance then id."""
     qtok = set(_tokens(query))
-    if not qtok:
+    # Stopwords prune generic scoring only. Identifier legs (exact names, camel
+    # words, op names) check the UNFILTERED tokens: "add" is a task verb in
+    # "add a new feature" but it is also the Add operator — a stopword list must
+    # never make a literal identifier unfindable (caught by kb.retrieval_eval).
+    qraw = {m.group(0).lower() for m in _TOKEN.finditer(query) if len(m.group(0)) > 2}
+    if not qtok and not qraw:
         return []
     ops = ops or []
     summary_by_id = summary_by_id or {}
@@ -77,12 +82,15 @@ def relevant_code(query: str, symbols: list[dict], edges: list[dict],
         path_l = s.get("path", "").lower()
         score = 0.0
         reasons = []
-        for t in qtok:
+        for t in qraw:                       # identifier legs: unfiltered tokens
             if t == nl:
                 score += 5; reasons.append(f"name=={t}")
             elif t in words:
                 score += 3; reasons.append(f"name~{t}")
-            elif t in nl:
+        for t in qtok:                       # generic legs: stopword-filtered
+            if t not in qraw and t == nl:
+                continue
+            if t in nl and t != nl and t not in words:
                 score += 1.5; reasons.append(f"name has {t}")
             if t in path_l:
                 score += 1; reasons.append(f"path has {t}")
@@ -93,7 +101,7 @@ def relevant_code(query: str, symbols: list[dict], edges: list[dict],
     # 2. op-registry matches (the spec's #1 table) as first-class candidates
     for o in ops:
         on = (o.get("op_name") or "").lower()
-        if any(t == on or t in on for t in qtok):
+        if any(t == on for t in qraw) or any(t in on for t in qtok):
             sid = f"op:{o.get('op_name')}:{o.get('version')}"
             if sid not in scored or scored[sid]["_score"] < 4:
                 scored[sid] = {

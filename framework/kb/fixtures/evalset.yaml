@@ -1,0 +1,27 @@
+# Ground-truth retrieval questions for the mini-runtime fixture (spec §6.1).
+# Queries are deliberately NOT copied from the stored records (§6.2).
+questions:
+  - id: structural-add-kernel
+    class: structural
+    query: which function implements the Add operator kernel
+    expect: AddCompute
+  - id: structural-clamp
+    class: structural
+    query: index clamping helper for elementwise ops
+    expect: clamp_index
+  - id: historical-clip-fix
+    class: historical
+    query: how was the quantized clip saturation bug fixed
+    expect: qnn-1041-clip-saturation
+  - id: historical-relu-fallback
+    class: historical
+    query: relu ran on cpu even though the backend had a kernel
+    expect: ort-2213-relu-partitioner
+  - id: conceptual-quant-wraparound
+    class: conceptual
+    query: clamped values wrap around after quantization at the boundary
+    expect: qnn-1041-clip-saturation
+  - id: conceptual-shared-dispatch
+    class: conceptual
+    query: which kernels share the elementwise dispatch entry points
+    expect: elementwise-cpu-kernels

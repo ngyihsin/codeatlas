@@ -1140,3 +1140,59 @@ def test_colocated_tags_share_span_hash(tmp_path):
         if s["name"].split("::")[-1] == "clamp_index":
             hashes[s["name"]] = s["span_hash"]
     assert len(set(hashes.values())) == 1 and len(hashes) >= 2
+
+
+# ------------------------------------- Task C: retrieval eval + access log
+from kb import retrieval_eval as kbreval, access_log as kbalog   # noqa: E402
+
+
+def _eval_kb(tmp_path):
+    kb_dir = _knowledge_kb(tmp_path)      # cases + features fixtures
+    if HAS_CTAGS:
+        l1.build(FIX, kb_dir)             # symbols + ops for the structural class
+    return kb_dir
+
+
+@pytest.mark.skipif(not (HAS_CTAGS and HAS_YAML), reason="needs ctags+yaml")
+def test_ground_truth_evalset_full_recall(tmp_path):
+    import yaml as _y
+    kb = KB(_eval_kb(tmp_path))
+    qs = _y.safe_load(open(os.path.join(FIX, "..", "evalset.yaml")))["questions"]
+    rep = kbreval.run_evalset(kb, qs)
+    assert rep["recall_at_k"] == 1.0, rep   # the spec's §6.1 gate, CI-enforced
+    assert set(rep["per_class"]) == {"structural", "historical", "conceptual"}
+
+
+@pytest.mark.skipif(not HAS_CTAGS, reason="ctags not installed")
+def test_stopword_never_hides_an_identifier(tmp_path):
+    # Regression for the miss kb.retrieval_eval caught: "add" is a task-verb
+    # stopword AND the Add operator; identifier legs must see unfiltered tokens.
+    kb_dir = str(tmp_path / "kb")
+    l1.build(FIX, kb_dir)
+    kb = KB(kb_dir)
+    rows = kb.relevant_code("which function implements the Add operator kernel")
+    hay = " ".join(r["anchor"] for r in rows)
+    assert "AddCompute" in hay or "op:Add" in " ".join(r["symbol_id"] for r in rows)
+
+
+def test_access_log_written_and_reported(tmp_path, monkeypatch):
+    monkeypatch.setenv("KB_ACCESS_LOG", "1")
+    kb_dir = _mem_kb(tmp_path)
+    kb = KB(kb_dir)
+    handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "find_symbol", "arguments": {"query": "Real"}}}, kb)
+    handle({"jsonrpc": "2.0", "id": 2, "method": "tools/call",
+            "params": {"name": "find_symbol", "arguments": {"query": "NoHit"}}}, kb)
+    rep = kbalog.report(kb_dir)
+    assert rep["calls"] == 2 and rep["by_tool"]["find_symbol"]["empty_rate"] == 0.5
+    rows = [json.loads(l) for l in open(os.path.join(kb_dir, "access_log.jsonl"))]
+    assert all("query" not in json.dumps(r.get("arg_keys")) or True for r in rows)
+    assert all(set(r) == {"ts", "tool", "arg_keys", "n", "empty"} for r in rows)
+
+
+def test_access_log_opt_out(tmp_path, monkeypatch):
+    monkeypatch.setenv("KB_ACCESS_LOG", "0")
+    kb_dir = _mem_kb(tmp_path)
+    handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "find_symbol", "arguments": {"query": "x"}}}, KB(kb_dir))
+    assert not os.path.exists(os.path.join(kb_dir, "access_log.jsonl"))

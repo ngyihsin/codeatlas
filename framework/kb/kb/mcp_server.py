@@ -448,6 +448,9 @@ def handle(req: dict, kb: KB) -> dict | None:
             result = fn(**args)
         except TypeError as e:
             return _err(mid, -32602, f"bad arguments: {e}")
+        from . import access_log                   # eval substrate (spec §6.3)
+        access_log.log(kb.dir, name, args,
+                       len(result) if isinstance(result, list) else 1)
         if isinstance(result, list):               # honest pagination: total + nextCursor
             off = _decode_cursor(cursor)
             if off is None:
