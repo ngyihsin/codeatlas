@@ -64,3 +64,25 @@ patterns:
     provider: QNN
     # REGISTER_QNN_OP_BUILDER(OpName, BuilderClass)
     regex: 'REGISTER_QNN_OP_BUILDER\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*,\s*(?P<builder>[A-Za-z_]\w*)'
+
+  # ---- PyTorch / ATen ----
+  - macro: TORCH_IMPL_FUNC
+    framework: pytorch
+    provider: structured
+    domain: aten
+    # TORCH_IMPL_FUNC(name_out) — structured-kernel impl for aten::name
+    regex: 'TORCH_IMPL_FUNC\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*\)'
+
+  - macro: REGISTER_DISPATCH
+    framework: pytorch
+    provider: dispatch_stub
+    domain: aten
+    # REGISTER_DISPATCH(op_stub, &kernel_fn) — per-arch kernel via DispatchStub
+    regex: 'REGISTER_DISPATCH\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*,\s*&?\s*(?P<kernel>[A-Za-z_][\w:<>]*)'
+
+  - macro: m.impl
+    framework: pytorch
+    provider: torch_library
+    domain: aten
+    # m.impl("op.overload", fn) inside a TORCH_LIBRARY_IMPL block
+    regex: 'm\.impl\s*\(\s*"(?P<op_name>[^"]+)"'

@@ -1240,3 +1240,24 @@ def test_initialize_instructions_refresh_from_disk(tmp_path):
     kbmem.record_finding(str(tmp_path / "kb"), "learned something new")
     after = handle({"jsonrpc": "2.0", "id": 2, "method": "initialize"}, kb)
     assert "1 active findings" in after["result"]["instructions"]   # same KB object
+
+
+# -------------------------------------------- PyTorch/ATen op patterns (YAML-only)
+@pytest.mark.skipif(not HAS_YAML, reason="pyyaml not installed")
+def test_pytorch_registration_patterns(tmp_path):
+    # Validated against a real sparse checkout of pytorch/aten/src/ATen
+    # (1086 registrations: 468 REGISTER_DISPATCH / 310 TORCH_IMPL_FUNC / 308 m.impl).
+    src = tmp_path / "native"
+    src.mkdir()
+    (src / "Activation.cpp").write_text(
+        'TORCH_IMPL_FUNC(gelu_out_cpu) (const Tensor& self) {}\n'
+        'REGISTER_DISPATCH(gelu_stub, &gelu_kernel);\n'
+        'TORCH_LIBRARY_IMPL(aten, CPU, m) {\n'
+        '  m.impl("gelu.out", TORCH_FN(gelu_out));\n'
+        '}\n')
+    patterns = l1.load_patterns(None)
+    ops = l1.extract_ops(str(tmp_path), patterns)
+    got = {(o.macro, o.op_name) for o in ops if o.framework == "pytorch"}
+    assert ("TORCH_IMPL_FUNC", "gelu_out_cpu") in got
+    assert ("REGISTER_DISPATCH", "gelu_stub") in got
+    assert ("m.impl", "gelu.out") in got
