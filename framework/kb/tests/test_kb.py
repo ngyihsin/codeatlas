@@ -974,3 +974,73 @@ def test_verify_flags_dangling_affected_symbols(tmp_path):
         "id: r\ntitle: t\naffected_symbols: [Real, GhostSymbol]\n")
     dangling = drift.link_integrity(str(out))
     assert dangling == [{"record": "recipes/r.yaml", "symbol": "GhostSymbol"}]
+
+
+# ---------------------------------------- Task A: L3 cases/features retrieval
+from kb import knowledge as kbknow                           # noqa: E402
+
+CASES_FIX = os.path.abspath(os.path.join(FIX, "..", "cases"))
+FEATS_FIX = os.path.abspath(os.path.join(FIX, "..", "features"))
+
+
+def _knowledge_kb(tmp_path):
+    import shutil as sh
+    kb_dir = tmp_path / "kb"
+    kb_dir.mkdir()
+    sh.copytree(CASES_FIX, kb_dir / "cases")
+    sh.copytree(FEATS_FIX, kb_dir / "features")
+    (kb_dir / "symbols.jsonl").write_text("")
+    return str(kb_dir)
+
+
+@pytest.mark.skipif(not HAS_YAML, reason="pyyaml not installed")
+def test_case_exact_ticket_lookup_behaves_like_lookup(tmp_path):
+    kb = KB(_knowledge_kb(tmp_path))
+    for q in ("QNN-1041", "qnn-1041-clip-saturation"):
+        rows = kb.find_case(q)
+        assert rows[0]["id"] == "qnn-1041-clip-saturation" and rows[0]["score"] == 1.0
+
+
+@pytest.mark.skipif(not HAS_YAML, reason="pyyaml not installed")
+def test_case_paraphrase_recall_gate(tmp_path):
+    # Spec §6.2: wording deliberately different from the stored case text.
+    kb = KB(_knowledge_kb(tmp_path))
+    rows = kb.find_case("clamped values wrap around after quantization at the boundary")
+    assert "qnn-1041-clip-saturation" in [r["id"] for r in rows[:5]]
+    rows2 = kb.find_case("kernel registered but nodes still run on the host processor")
+    assert "ort-2213-relu-partitioner" in [r["id"] for r in rows2[:5]]
+
+
+@pytest.mark.skipif(not HAS_YAML, reason="pyyaml not installed")
+def test_feature_paraphrase_recall_gate(tmp_path):
+    kb = KB(_knowledge_kb(tmp_path))
+    rows = kb.find_feature("which kernels share the elementwise dispatch")
+    assert rows[0]["id"] == "elementwise-cpu-kernels"
+
+
+@pytest.mark.skipif(not HAS_YAML, reason="pyyaml not installed")
+def test_search_semantic_tags_kinds_and_interleaves(tmp_path):
+    kb = KB(_knowledge_kb(tmp_path))
+    rows = kb.search_semantic("clip quantization saturation", k=6)
+    kinds = {r["kind"] for r in rows}
+    assert "case" in kinds and all("kind" in r for r in rows)
+    assert rows[0]["kind"] != rows[1]["kind"]        # interleaved, not one-source
+
+
+@pytest.mark.skipif(not HAS_YAML, reason="pyyaml not installed")
+def test_case_confidence_defaults_to_speculation(tmp_path):
+    kb_dir = tmp_path / "kb"
+    (kb_dir / "cases").mkdir(parents=True)
+    (kb_dir / "cases" / "c.yaml").write_text("id: c1\ntitle: no confidence field\n")
+    (recs,) = kbknow.load_cases(str(kb_dir))
+    assert recs["confidence"] == "speculation"       # spec §1.3 default
+
+
+@pytest.mark.skipif(not os.environ.get("KB_MINILM_DIR"),
+                    reason="KB_MINILM_DIR not set (true-synonym gate needs MiniLM)")
+def test_case_synonym_recall_gate_minilm(tmp_path):
+    # Stronger §6.2 gate: pure synonyms, near-zero token overlap. HashEmbedder
+    # cannot pass this by construction; it requires the real embedder.
+    kb = KB(_knowledge_kb(tmp_path))
+    rows = kb.find_case("int8 overflow bug in the clamping operator")
+    assert "qnn-1041-clip-saturation" in [r["id"] for r in rows[:5]]

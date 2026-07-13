@@ -251,6 +251,48 @@ class KB:
                         "importance": s.get("importance", 0)})
         return out
 
+    def _knowledge_index(self, kind: str):
+        # Lazy hybrid indexes over cases/features (same pattern as _recipe_index).
+        attr = f"_{kind}_index"
+        if getattr(self, attr, None) is None:
+            try:
+                from .knowledge import KnowledgeIndex, load_cases, load_features
+                records = (load_cases if kind == "case" else load_features)(self.dir)
+                setattr(self, attr, KnowledgeIndex(records, kind))
+            except Exception:
+                setattr(self, attr, False)
+        return getattr(self, attr)
+
+    def find_case(self, query: str) -> list[dict]:
+        # Curated incident/fix history: "how was Y fixed". Exact ticket/id lookups
+        # short-circuit; otherwise hybrid semantic search (unified spec §4.1).
+        idx = self._knowledge_index("case")
+        return idx.search(query, k=5) if idx else []
+
+    def find_feature(self, query: str) -> list[dict]:
+        # Curated capability records: "what does subsystem X provide".
+        idx = self._knowledge_index("feature")
+        return idx.search(query, k=5) if idx else []
+
+    def search_semantic(self, query: str, k: int = 5) -> list[dict]:
+        # Unified kind-tagged retrieval across symbols + recipes + cases + features
+        # (unified spec §4.1). Scores are comparable only within a kind, so results
+        # are rank-interleaved across sources rather than sorted by raw score.
+        k = min(k, BUDGET)
+        legs = [[{**r, "kind": "symbol"} for r in self.relevant_code(query, k=k)],
+                self.find_recipe(query), self.find_case(query),
+                self.find_feature(query)]
+        for leg, kind in zip(legs, ("symbol", "recipe", "case", "feature")):
+            for r in leg:
+                r.setdefault("kind", kind)
+        out, i = [], 0
+        while len(out) < k and any(i < len(l) for l in legs):
+            for l in legs:
+                if i < len(l) and len(out) < k:
+                    out.append(l[i])
+            i += 1
+        return out
+
     def build_info(self, name: str = "") -> list[dict]:
         # The build system as knowledge (kb.buildsys): targets/options/packages.
         # No name -> compact overview; name -> matching rows with full detail.
@@ -294,6 +336,13 @@ TOOLS = [
      "inputSchema": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]}},
     {"name": "build_info", "description": "Build-system map: targets/deps/options (kb.buildsys).",
      "inputSchema": {"type": "object", "properties": {"name": {"type": "string"}}}},
+    {"name": "find_case", "description": "Curated incident/fix history (L3 cases): how was Y fixed; ticket ids resolve exactly.",
+     "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+    {"name": "find_feature", "description": "Curated capability records (L3 features): what does subsystem X provide.",
+     "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+    {"name": "search_semantic", "description": "Unified retrieval across symbols+recipes+cases+features; rows tagged kind.",
+     "inputSchema": {"type": "object", "properties": {
+         "query": {"type": "string"}, "k": {"type": "integer"}}, "required": ["query"]}},
     {"name": "review_status", "description": "Verification status for a symbol.",
      "inputSchema": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]}},
 ]
