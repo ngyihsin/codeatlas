@@ -1196,3 +1196,47 @@ def test_access_log_opt_out(tmp_path, monkeypatch):
     handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
             "params": {"name": "find_symbol", "arguments": {"query": "x"}}}, KB(kb_dir))
     assert not os.path.exists(os.path.join(kb_dir, "access_log.jsonl"))
+
+
+# ------------------------------------------------- Task D: HTTP hardening
+def test_http_refuses_non_loopback_without_token(tmp_path, monkeypatch):
+    monkeypatch.delenv("KB_HTTP_TOKEN", raising=False)
+    with pytest.raises(SystemExit, match="bearer token"):
+        serve_http(KB(_mem_kb(tmp_path)), host="0.0.0.0", port=0)
+
+
+def test_http_bearer_auth_enforced(tmp_path):
+    import socket, threading, time, urllib.request, urllib.error
+    kb = KB(_mem_kb(tmp_path))
+    s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+    threading.Thread(target=serve_http, args=(kb, "127.0.0.1", port, "sekrit"),
+                     daemon=True).start()
+    url = f"http://127.0.0.1:{port}/mcp"
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize"}).encode()
+
+    def post(headers):
+        req = urllib.request.Request(url, data=body, headers=headers)
+        try:
+            return urllib.request.urlopen(req, timeout=5).status
+        except urllib.error.HTTPError as e:
+            return e.code
+
+    for _ in range(50):                       # wait for the server thread
+        time.sleep(0.05)
+        try:
+            if post({"Authorization": "Bearer sekrit"}) == 200:
+                break
+        except OSError:
+            continue
+    assert post({}) == 401                                    # no token
+    assert post({"Authorization": "Bearer wrong"}) == 401     # bad token
+    assert post({"Authorization": "Bearer sekrit"}) == 200    # right token
+
+
+def test_initialize_instructions_refresh_from_disk(tmp_path):
+    kb = KB(_mem_kb(tmp_path))
+    before = handle({"jsonrpc": "2.0", "id": 1, "method": "initialize"}, kb)
+    assert "0 active findings" in before["result"]["instructions"]
+    kbmem.record_finding(str(tmp_path / "kb"), "learned something new")
+    after = handle({"jsonrpc": "2.0", "id": 2, "method": "initialize"}, kb)
+    assert "1 active findings" in after["result"]["instructions"]   # same KB object

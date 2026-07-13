@@ -66,6 +66,8 @@ step that needs an agent backend — see *Running on your own codebase* below.
 | **L3 cases/features** (institutional knowledge) | `kb/knowledge.py` | via MCP `find_case`/`find_feature`/`search_semantic` | ✅ YAML records + hybrid retrieval (exact ticket lookup short-circuits; vector leg with paraphrase-recall gates per spec §6.2) |
 | **M memory layer** (agent write-back) | `kb/memory.py` | `python -m kb.memory list/show/promote/reject` | ✅ `memory.sqlite` (PRIMARY, WAL; rebuilds never touch it); `record_finding` guardrails (cap/dedup/dangling); staleness via span_hash; promotion prints draft Case YAML for a human |
 | **Consolidated verify** | `kb/drift.py` | `python -m kb.drift verify <kb> <code>` | ✅ file freshness + per-symbol span drift + L3 link integrity + finding staleness |
+| **Retrieval eval harness** (spec §6) | `kb/retrieval_eval.py` + `kb/access_log.py` | `python -m kb.retrieval_eval run <kb> <evalset.yaml>` | ✅ recall@k per question class (structural/historical/conceptual), CI-gateable exit code; access log (arg keys only) + `access_log report` for tool distribution / empty-result rates |
+| **HTTP hardening** (spec §4.3) | `kb/mcp_server.py` | `KB_HTTP_TOKEN=… python -m kb.mcp_server --http PORT` | ✅ bearer auth (constant-time; 401), refuses non-loopback bind without a token, DNS-rebinding Origin check, `initialize` instructions rebuilt from disk per call |
 | **Build-system knowledge** (targets/deps/options) | `kb/buildsys.py` | `python -m kb.buildsys <code> <out>` | ✅ CMake **File API** (exact; same configure-only run as compdb) with a static structural scan fallback (tagged partial); served via `build_info`; joined into `find_symbol` as `build_target` |
 | **Precise call-graph tier** | `kb/scip_ingest.py` + `kb/compdb.py` | `python -m kb.scip_ingest build <code> auto <out>` | ✅ live scip-clang validated; innermost-scope caller resolution; `auto` derives `compile_commands.json` itself (CMake configure-only / Meson / make dry-run / synthesized fallback) |
 
@@ -152,7 +154,8 @@ KB_DIR=/tmp/kb python -m kb.mcp_server                       # serve to an agent
 
 # 4. Trust & freshness
 python -m kb.review promote /tmp/kb <symbol-id> --to reviewed --owner you
-python -m kb.drift  sample  /tmp/kb $CODE                    # fresh_rate SLO
+python -m kb.drift  verify  /tmp/kb $CODE                    # spans+links+findings+SLO
+python -m kb.retrieval_eval run /tmp/kb evalset.yaml         # recall@k gate (spec §6)
 python -m kb.mine_recipes /path/to/repo                      # candidate L3 recipes from git log
 python -m kb.buildsys $CODE /tmp/kb                          # build-system map -> build_info tool
 ```
@@ -165,11 +168,11 @@ clang-grade edges with `python -m kb.scip_ingest build $CODE auto /tmp/kb` — `
 fallback, honestly tagged) so there is no manual build step. Needs `scip-clang` + `scip`
 on PATH for the indexing itself.
 
-Run the tests: `python -m pytest -q`  (83 pass; 2 skipped without scip-clang / KB_MINILM_DIR).
+Run the tests: `python -m pytest -q`  (90 pass; 2 skipped without scip-clang / KB_MINILM_DIR).
 
 ## Verification (production-quality gate)
 
-- **`pytest`: 83 pass, 2 skipped** (ops extraction, pagerank distribution, lint good/bad, hash
+- **`pytest`: 90 pass, 2 skipped** (ops extraction, pagerank distribution, lint good/bad, hash
   stability, firewall cascade, MCP tools + pagination, L2 generate / self-repair / quarantine /
   entailment-gate / cache-integrity, scip innermost-caller, buildsys (File API / static scan / fallback-on-configure-failure / MCP build_info / find_symbol build-target join), compdb auto-derivation (cmake
   configure-only / make dry-run parser / synthesized fallback), embedder + recipe mining,
@@ -228,9 +231,11 @@ framework/kb/
     compdb.py        # derive compile_commands.json (cmake configure-only/meson/make -n/synth)
     buildsys.py      # build-system map: CMake File API (exact) / static scan (partial)
     scip_ingest.py   # precise (xref:precise) call-graph tier from scip-clang
-    mcp_server.py    # MCP 2025-06-18 server: 16 tools (14 read + 2 write) + resources + pagination (stdio/HTTP)
+    mcp_server.py    # MCP 2025-06-18 server: 16 tools (14 read + 2 write); bearer-auth HTTP
+    retrieval_eval.py# ground-truth recall@k runner (evalset.yaml, per-class)
+    access_log.py    # tools/call JSONL log + weekly-review report + resources + pagination (stdio/HTTP)
   scripts/fetch_minilm.sh       # lay out KB_MINILM_DIR from allowlisted URLs (route B)
   fixtures/mini-runtime/        # tiny C++ exercising each op macro (deterministic tests)
   fixtures/recipes/*.yaml       # seed L3 recipes (add-an-op, fix-a-dispatch-bug)
-  tests/test_kb.py              # 83 tests
+  tests/test_kb.py              # 90 tests
 ```

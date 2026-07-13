@@ -379,6 +379,36 @@ TOOLS = [
 ]
 
 
+def _instructions(kb: KB) -> str:
+    """Registered-KB banner, rebuilt from DISK on every initialize — a
+    long-running HTTP server must not serve startup-time state forever
+    (unified spec §4.3)."""
+    def _count(name: str) -> int:
+        p = os.path.join(kb.dir, name)
+        try:
+            return sum(1 for l in open(p, encoding="utf-8") if l.strip())
+        except OSError:
+            return 0
+
+    def _yamls(sub: str) -> int:
+        d = os.path.join(kb.dir, sub)
+        return len([f for f in os.listdir(d)
+                    if f.endswith((".yaml", ".yml"))]) if os.path.isdir(d) else 0
+
+    findings = 0
+    if os.path.isfile(os.path.join(kb.dir, "memory.sqlite")):
+        try:
+            from . import memory
+            findings = len(memory.find_findings(kb.dir, status="active", limit=1000))
+        except Exception:
+            pass
+    return (f"KB at {kb.dir}: {_count('symbols.jsonl')} symbols, "
+            f"{_count('ops.jsonl')} ops, {_count('summaries.jsonl')} summaries, "
+            f"{_yamls('recipes')} recipes, {_yamls('cases')} cases, "
+            f"{_yamls('features')} features, {findings} active findings. "
+            "Read tools cover L1-L3; record_finding writes to agent memory.")
+
+
 PROTOCOL_VERSION = "2025-06-18"
 _PAGE = 50          # items per page for list endpoints
 
@@ -411,7 +441,8 @@ def handle(req: dict, kb: KB) -> dict | None:
         return _ok(mid, {"protocolVersion": PROTOCOL_VERSION,
                          "capabilities": {"tools": {"listChanged": False},
                                           "resources": {"listChanged": False}},
-                         "serverInfo": {"name": "codeatlas-kb", "version": "0.2.0"}})
+                         "serverInfo": {"name": "codeatlas-kb", "version": "0.2.0"},
+                         "instructions": _instructions(kb)})
     if method in ("notifications/initialized", "notifications/cancelled"):
         return None
 
@@ -474,21 +505,46 @@ def _err(mid, code, msg):
     return {"jsonrpc": "2.0", "id": mid, "error": {"code": code, "message": msg}}
 
 
-def serve_http(kb: KB, host: str = "127.0.0.1", port: int = 8765) -> None:
+_LOOPBACK = ("127.0.0.1", "localhost", "::1")
+
+
+def serve_http(kb: KB, host: str = "127.0.0.1", port: int = 8765,
+               token: str | None = None) -> None:
     """Streamable-HTTP-style transport (MCP 2025-06-18): one endpoint, POST per message,
-    JSON response (or 202 for notifications). Localhost-bound; validates Origin to avoid
-    DNS-rebinding. Dependency-free (stdlib http.server)."""
+    JSON response (or 202 for notifications). Validates Origin to avoid DNS-rebinding.
+    Dependency-free (stdlib http.server).
+
+    Security (unified spec §4.3, normative): the KB can contain source text —
+    treat the server as holding the codebase itself. A bearer token ($KB_HTTP_TOKEN
+    or the `token` arg) is REQUIRED before any non-loopback binding; when set,
+    every request must carry `Authorization: Bearer <token>` (constant-time
+    comparison), else 401."""
+    import hmac
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    token = token or os.environ.get("KB_HTTP_TOKEN") or None
+    if host not in _LOOPBACK and not token:
+        raise SystemExit(
+            "refusing to bind non-loopback host without a bearer token — "
+            "set KB_HTTP_TOKEN (the KB holds source text; see spec §4.3)")
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):            # quiet
             pass
 
         def _bad(self, code, msg):
-            self.send_response(code); self.end_headers()
+            self.send_response(code)
+            if code == 401:
+                self.send_header("WWW-Authenticate", "Bearer")
+            self.end_headers()
             self.wfile.write(msg.encode())
 
         def do_POST(self):
+            if token:
+                supplied = self.headers.get("Authorization", "")
+                expected = f"Bearer {token}"
+                if not hmac.compare_digest(supplied.encode(), expected.encode()):
+                    return self._bad(401, "unauthorized")
             origin = self.headers.get("Origin", "")
             if origin and not (origin.startswith("http://127.0.0.1")
                                or origin.startswith("http://localhost")):
