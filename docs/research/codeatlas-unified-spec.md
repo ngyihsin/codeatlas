@@ -299,12 +299,13 @@ File API with a static-scan fallback and per-row fidelity tags).
 
 ## R.4 Storage: JSONL today, sqlite when Task A lands
 
-framework/kb persists L1/L2 as JSONL and searches in-memory
-(brute-force cosine — exact at current scale). The spec's
-`index.sqlite` (+FTS5, +vec) becomes the target at Task A, when
-cases/features make lexical+vector hybrid retrieval real. JSONL
-artifacts remain the pipeline interchange format; `index.sqlite` is
-derived from them, preserving invariant §1.2.
+framework/kb persists L1/L2 as JSONL; `index.sqlite` is derived from
+them, preserving invariant §1.2. Phase 1 (landed): `symbol_edges`
+mirrored to sqlite with both-direction indexes and precise-precedence
+resolved at build time — measured on PyTorch ATen (2.7M edges): KB
+open 19.8s→0.4s. The mirror is freshness-stamped against its source
+JSONLs; a stale mirror falls back to JSONL, never serves old edges.
+Remaining artifacts migrate (with FTS5/vec) when they measurably hurt.
 
 ## R.5 Hash granularity
 

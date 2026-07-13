@@ -378,6 +378,8 @@ def build(code_root: str, out_dir: str, patterns_path: str | None = None) -> dic
     _write_jsonl(os.path.join(out_dir, "tests.jsonl"), tests)
     _write_module_map(os.path.join(out_dir, "module_map.md"), code_root, symbols, ops)
     json.dump({"file_hashes": hashes}, open(cache_path, "w", encoding="utf-8"))
+    from . import index_db
+    index_db.build(out_dir)      # refresh the derived sqlite mirror (spec R.4)
     return {"symbols": len(symbols), "edges": len(edges), "ops": len(ops),
             "tests": len(tests), "mode": mode, "changed": len(changed), "out": out_dir}
 

@@ -1261,3 +1261,75 @@ def test_pytorch_registration_patterns(tmp_path):
     assert ("TORCH_IMPL_FUNC", "gelu_out_cpu") in got
     assert ("REGISTER_DISPATCH", "gelu_stub") in got
     assert ("m.impl", "gelu.out") in got
+
+
+# ------------------------------------------- index.sqlite derived edge mirror
+from kb import index_db as kbidx                             # noqa: E402
+
+
+def _edges_kb(tmp_path, precise=False):
+    kb_dir = tmp_path / "kb"
+    kb_dir.mkdir()
+    (kb_dir / "symbols.jsonl").write_text("\n".join(json.dumps(s) for s in [
+        {"id": "A", "name": "A", "path": "a.cc", "line": 1},
+        {"id": "B", "name": "B", "path": "a.cc", "line": 5},
+        {"id": "C", "name": "C", "path": "a.cc", "line": 9}]) + "\n")
+    (kb_dir / "edges.jsonl").write_text(
+        json.dumps({"caller_id": "A", "callee_id": "B", "xref": "partial",
+                    "method": "heuristic"}) + "\n" +
+        json.dumps({"caller_id": "C", "callee_id": "B", "xref": "partial",
+                    "method": "heuristic"}) + "\n")
+    if precise:
+        (kb_dir / "edges.precise.jsonl").write_text(
+            json.dumps({"caller_id": "A", "callee_id": "B", "xref": "precise",
+                        "method": "scip-clang"}) + "\n")
+    return str(kb_dir)
+
+
+def test_index_db_build_fresh_and_stale(tmp_path):
+    kb_dir = _edges_kb(tmp_path)
+    assert not kbidx.fresh(kb_dir)
+    res = kbidx.build(kb_dir)
+    assert res["edges"] == 2 and kbidx.fresh(kb_dir)
+    # touching a source JSONL invalidates the mirror -> KB must fall back
+    import time as _t
+    _t.sleep(1.05)
+    with open(os.path.join(kb_dir, "edges.jsonl"), "a") as f:
+        f.write(json.dumps({"caller_id": "B", "callee_id": "C",
+                            "xref": "partial", "method": "heuristic"}) + "\n")
+    assert not kbidx.fresh(kb_dir)
+    kb = KB(kb_dir)
+    assert kb._edge_con is None                    # stale mirror never served
+    assert {(e["caller_id"], e["callee_id"]) for e in kb.edges} == {
+        ("A", "B"), ("C", "B"), ("B", "C")}
+
+
+def test_index_db_precise_precedence_baked_in(tmp_path):
+    kb_dir = _edges_kb(tmp_path, precise=True)
+    kbidx.build(kb_dir)
+    kb = KB(kb_dir)
+    assert kb._edge_con is not None
+    ab = [e for e in kb.edges if e["caller_id"] == "A" and e["callee_id"] == "B"]
+    assert len(ab) == 1 and ab[0]["xref"] == "precise"      # no duplicate pair
+    assert sorted(kb.edges_in("B")) == ["A", "C"]
+    assert kb.edges_out("A") == ["B"]
+
+
+def test_sqlite_and_jsonl_paths_agree(tmp_path):
+    kb_dir = _edges_kb(tmp_path)
+    kb_jsonl = KB(kb_dir)                          # no mirror yet -> jsonl
+    kbidx.build(kb_dir)
+    kb_sql = KB(kb_dir)                            # fresh mirror -> sqlite
+    assert kb_jsonl._edge_con is None and kb_sql._edge_con is not None
+    for sid in ("A", "B", "C"):
+        assert sorted(kb_jsonl.edges_in(sid)) == sorted(kb_sql.edges_in(sid))
+        assert sorted(kb_jsonl.edges_out(sid)) == sorted(kb_sql.edges_out(sid))
+    assert kb_jsonl.trace_callers("B") == kb_sql.trace_callers("B")
+
+
+@pytest.mark.skipif(not HAS_CTAGS, reason="ctags not installed")
+def test_l1_build_refreshes_mirror(tmp_path):
+    out = str(tmp_path / "kb")
+    l1.build(FIX, out)
+    assert kbidx.fresh(out)                        # pipeline keeps mirror fresh
+    assert KB(out)._edge_con is not None

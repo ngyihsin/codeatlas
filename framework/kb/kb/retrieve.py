@@ -35,10 +35,11 @@ def _name_words(name: str) -> set[str]:
     return {w.lower() for w in _CAMEL.findall(name) if len(w) > 2}
 
 
-def relevant_code(query: str, symbols: list[dict], edges: list[dict],
+def relevant_code(query: str, symbols: list[dict], edges: list[dict] | None,
                   ops: list[dict] | None = None,
                   summary_by_id: dict[str, dict] | None = None,
-                  k: int = 5, expand: int = 3) -> list[dict]:
+                  k: int = 5, expand: int = 3,
+                  edges_out=None, edges_in=None) -> list[dict]:
     """Return up to `k` ranked candidates: {anchor, symbol_id, kind, why, evidence,
     precision, summary?}. Deterministic; ties broken by importance then id."""
     qtok = set(_tokens(query))
@@ -113,21 +114,26 @@ def relevant_code(query: str, symbols: list[dict], edges: list[dict],
                     "precision": "exact",
                 }
 
-    # 3. structural expansion: pull neighbors of the strongest lexical hits
+    # 3. structural expansion: pull neighbors of the strongest lexical hits.
+    # Neighbor lookups come either from callables (indexed sqlite via kb.index_db)
+    # or from an edges list (adjacency maps built here) — same results either way.
     if lexical_hits and expand:
         by_id = {s.get("id"): s for s in symbols}
-        rev: dict[str, list[str]] = {}
-        fwd: dict[str, list[str]] = {}
-        for e in edges:
-            fwd.setdefault(e["caller_id"], []).append(e["callee_id"])
-            rev.setdefault(e["callee_id"], []).append(e["caller_id"])
+        if edges_out is None or edges_in is None:
+            rev: dict[str, list[str]] = {}
+            fwd: dict[str, list[str]] = {}
+            for e in edges or []:
+                fwd.setdefault(e["caller_id"], []).append(e["callee_id"])
+                rev.setdefault(e["callee_id"], []).append(e["caller_id"])
+            edges_out = lambda sid: fwd.get(sid, [])      # noqa: E731
+            edges_in = lambda sid: rev.get(sid, [])       # noqa: E731
         top = sorted(lexical_hits, key=lambda s: -scored[s["id"]]["_score"])[:expand]
         for hit in top:
             hid = hit["id"]
-            for nid in fwd.get(hid, [])[:5]:
+            for nid in edges_out(hid)[:5]:
                 if nid in by_id:
                     consider(by_id[nid], 0.8, f"called by {hit['name']}")
-            for nid in rev.get(hid, [])[:5]:
+            for nid in edges_in(hid)[:5]:
                 if nid in by_id:
                     consider(by_id[nid], 0.8, f"calls {hit['name']}")
 

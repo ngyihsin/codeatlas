@@ -38,13 +38,23 @@ class KB:
     def __init__(self, kb_dir: str):
         self.dir = kb_dir
         self.symbols = self._jsonl("symbols.jsonl")
-        self.edges = self._jsonl("edges.jsonl")
-        # Precise scip-clang edges (if ingested) take precedence over heuristic ones.
-        precise = self._jsonl("edges.precise.jsonl")
-        if precise:
-            seen = {(e["caller_id"], e["callee_id"]) for e in precise}
-            self.edges = precise + [e for e in self.edges
-                                    if (e["caller_id"], e["callee_id"]) not in seen]
+        # Edges: prefer the derived index.sqlite mirror (precise-over-heuristic
+        # precedence baked in at build time; both-direction indexes) — 2.7M-row
+        # KBs open in ms instead of ~7s. Stale/missing mirror -> JSONL fallback
+        # with the same precedence computed here.
+        from . import index_db
+        self._edge_con = index_db.connect_ro(kb_dir) if index_db.fresh(kb_dir) else None
+        self._edges_list: list[dict] | None = None
+        self._fwd: dict[str, list[str]] | None = None
+        self._rev: dict[str, list[str]] | None = None
+        if self._edge_con is None:
+            edges = self._jsonl("edges.jsonl")
+            precise = self._jsonl("edges.precise.jsonl")
+            if precise:
+                seen = {(e["caller_id"], e["callee_id"]) for e in precise}
+                edges = precise + [e for e in edges
+                                   if (e["caller_id"], e["callee_id"]) not in seen]
+            self._edges_list = edges
         self.ops = self._jsonl("ops.jsonl")
         self.tests = self._jsonl("tests.jsonl")
         self.build_rows = self._jsonl("build_targets.jsonl")   # kb.buildsys (optional)
@@ -71,6 +81,39 @@ class KB:
                 self.summary_by_path.setdefault(s["path"], s)
             if s.get("id"):
                 self.summary_by_id[s["id"]] = s
+
+    @property
+    def edges(self) -> list[dict]:
+        # Full-list compatibility view. Sqlite-backed KBs materialize it once,
+        # on first use only — graph queries below never need the whole list.
+        if self._edges_list is None:
+            rows = self._edge_con.execute(
+                "SELECT caller_id, callee_id, xref, method FROM symbol_edges")
+            self._edges_list = [{"caller_id": c, "callee_id": e, "xref": x,
+                                 "method": m} for c, e, x, m in rows]
+        return self._edges_list
+
+    def _neighbor_maps(self) -> tuple[dict, dict]:
+        if self._fwd is None:
+            self._fwd, self._rev = {}, {}
+            for e in self.edges:
+                self._fwd.setdefault(e["caller_id"], []).append(e["callee_id"])
+                self._rev.setdefault(e["callee_id"], []).append(e["caller_id"])
+        return self._fwd, self._rev
+
+    def edges_out(self, sid: str) -> list[str]:
+        """Callees of sid — indexed lookup on sqlite, dict lookup on JSONL."""
+        if self._edge_con is not None:
+            return [r[0] for r in self._edge_con.execute(
+                "SELECT callee_id FROM symbol_edges WHERE caller_id=?", (sid,))]
+        return self._neighbor_maps()[0].get(sid, [])
+
+    def edges_in(self, sid: str) -> list[str]:
+        """Callers of sid."""
+        if self._edge_con is not None:
+            return [r[0] for r in self._edge_con.execute(
+                "SELECT caller_id FROM symbol_edges WHERE callee_id=?", (sid,))]
+        return self._neighbor_maps()[1].get(sid, [])
 
     def _jsonl(self, name: str) -> list[dict]:
         p = os.path.join(self.dir, name)
@@ -153,19 +196,17 @@ class KB:
     def relevant_code(self, query: str, k: int = 5) -> list[dict]:
         # Hybrid NL→code retrieval (lexical + call-graph expansion + importance).
         from .retrieve import relevant_code as _rc
-        return _rc(query, self.symbols, self.edges, self.ops,
-                   self.summary_by_id, k=min(k, BUDGET))
+        return _rc(query, self.symbols, None, self.ops,
+                   self.summary_by_id, k=min(k, BUDGET),
+                   edges_out=self.edges_out, edges_in=self.edges_in)
 
     def trace_callers(self, symbol: str, depth: int = 1) -> list[dict]:
         ids = [s["id"] for s in self.symbols if s.get("name") == symbol or s.get("id") == symbol]
-        rev: dict[str, list[str]] = {}
-        for e in self.edges:
-            rev.setdefault(e["callee_id"], []).append(e["caller_id"])
         seen, frontier, out = set(ids), list(ids), []
         for _ in range(max(1, depth)):
             nxt = []
             for cid in frontier:
-                for caller in rev.get(cid, []):
+                for caller in self.edges_in(cid):
                     if caller not in seen:
                         seen.add(caller); nxt.append(caller)
                         out.append({"caller": caller, "of": cid})

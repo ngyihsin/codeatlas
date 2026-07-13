@@ -97,6 +97,8 @@ def _write(out_dir: str, symbols: list[dict], edges: list[dict]) -> dict:
     with open(os.path.join(out_dir, "symbols.scip.jsonl"), "w", encoding="utf-8") as f:
         for s in symbols:
             f.write(json.dumps(s, ensure_ascii=False, sort_keys=True) + "\n")
+    from . import index_db
+    index_db.build(out_dir)      # precise edges change precedence -> remirror
     return {"symbols": len(symbols), "precise_edges": len(edges), "out": out_dir}
 
 
