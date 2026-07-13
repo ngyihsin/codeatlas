@@ -103,6 +103,28 @@ class Symbol:
     churn: int = 0
     last_author: str = ""
     last_modified: str = ""
+    span_hash: str = ""     # staleness anchor (unified spec §1.4)
+
+
+def compute_span_hashes(code_root: str, symbols: list["Symbol"]) -> None:
+    """Fill span_hash in place. A symbol's span is [its line, next symbol's line)
+    within its file — the same convention build_edges uses for bodies — so drift
+    detection and the call graph key on identical text."""
+    import hashlib
+    by_path: dict[str, list[Symbol]] = {}
+    for s in symbols:
+        by_path.setdefault(s.path, []).append(s)
+    for path, syms in by_path.items():
+        try:
+            lines = open(os.path.join(code_root, path), encoding="utf-8",
+                         errors="replace").read().splitlines()
+        except OSError:
+            continue
+        ordered = sorted(syms, key=lambda s: s.line)
+        for i, s in enumerate(ordered):
+            end = ordered[i + 1].line - 1 if i + 1 < len(ordered) else len(lines)
+            span = "\n".join(lines[max(s.line - 1, 0):max(end, s.line)])
+            s.span_hash = hashlib.sha256(span.encode()).hexdigest()[:12]
 
 
 def extract_symbols(code_root: str) -> list[Symbol]:
@@ -124,6 +146,8 @@ def extract_symbols(code_root: str) -> list[Symbol]:
         if t.get("_type") != "tag" or not t.get("name") or not t.get("path"):
             continue
         rel = os.path.relpath(t["path"], code_root)
+        if os.path.splitext(rel)[1] not in CODE_EXT:   # same gate as file_hashes
+            continue
         ln = int(t.get("line", 0) or 0)
         syms.append(Symbol(
             id=f"{rel}:{t['name']}:{ln}",
@@ -312,6 +336,7 @@ def rebuild_edges(code_root: str, symbols: list[Symbol], prev_edges: list[dict],
 def build(code_root: str, out_dir: str, patterns_path: str | None = None) -> dict:
     os.makedirs(out_dir, exist_ok=True)
     symbols = extract_symbols(code_root)
+    compute_span_hashes(code_root, symbols)
 
     # Incremental edges: re-derive only changed files' edges when a prior build exists.
     hashes = file_hashes(code_root)

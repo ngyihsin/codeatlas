@@ -930,3 +930,47 @@ def test_find_symbol_without_buildsys_is_unchanged(tmp_path):
                             "path": "src/add.cc", "importance": 0.5}) + "\n")
     row = KB(str(tmp_path)).find_symbol("AddCompute", detail="preview")[0]
     assert "build_target" not in row                # graceful before kb.buildsys runs
+
+
+# ------------------------------------------- parity pass: span_hash + verify
+def _build_l1(tmp_path):
+    out = str(tmp_path / "kb")
+    l1.build(FIX, out)
+    return out
+
+
+@pytest.mark.skipif(not HAS_CTAGS, reason="ctags not installed")
+def test_symbols_carry_span_hash(tmp_path):
+    out = _build_l1(tmp_path)
+    syms = [json.loads(l) for l in open(os.path.join(out, "symbols.jsonl"))]
+    assert syms and all(s.get("span_hash") for s in syms)
+    assert all(len(s["span_hash"]) == 12 for s in syms)
+
+
+@pytest.mark.skipif(not HAS_CTAGS, reason="ctags not installed")
+def test_verify_detects_span_drift(tmp_path):
+    import shutil as sh
+    out = _build_l1(tmp_path)
+    mutated = tmp_path / "code"
+    sh.copytree(FIX, mutated)
+    f = mutated / "cpu" / "elementwise_ops.cc"
+    f.write_text(f.read_text().replace("return ElementwiseBinary(ctx);",
+                                       "return ElementwiseBinary(ctx);  // mutated"))
+    rep = drift.verify(out, str(mutated))
+    assert any(d["reason"] == "span_changed" and "elementwise_ops" in d["id"]
+               for d in rep["drifted_symbols"])
+    clean = drift.verify(out, FIX)
+    assert clean["drifted_symbols"] == []
+
+
+@pytest.mark.skipif(not HAS_YAML, reason="pyyaml not installed")
+def test_verify_flags_dangling_affected_symbols(tmp_path):
+    out = tmp_path / "kb"
+    (out / "recipes").mkdir(parents=True)
+    with open(out / "symbols.jsonl", "w") as f:
+        f.write(json.dumps({"id": "a.cc:Real:1", "name": "Real", "path": "a.cc",
+                            "line": 1}) + "\n")
+    (out / "recipes" / "r.yaml").write_text(
+        "id: r\ntitle: t\naffected_symbols: [Real, GhostSymbol]\n")
+    dangling = drift.link_integrity(str(out))
+    assert dangling == [{"record": "recipes/r.yaml", "symbol": "GhostSymbol"}]
