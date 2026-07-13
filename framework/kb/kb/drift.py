@@ -83,8 +83,10 @@ def symbol_drift(kb_dir: str, code_root: str) -> list[dict]:
             continue
         lines = open(full, encoding="utf-8", errors="replace").read().splitlines()
         ordered = sorted(syms, key=lambda s: s["line"])
-        for i, s in enumerate(ordered):
-            end = ordered[i + 1]["line"] - 1 if i + 1 < len(ordered) else len(lines)
+        starts = sorted({s["line"] for s in ordered})
+        nxt = {ln: starts[i + 1] for i, ln in enumerate(starts[:-1])}
+        for s in ordered:
+            end = nxt.get(s["line"], len(lines) + 1) - 1   # same rule as l1
             span = "\n".join(lines[max(s["line"] - 1, 0):max(end, s["line"])])
             if hashlib.sha256(span.encode()).hexdigest()[:12] != s["span_hash"]:
                 drifted.append({"id": s["id"], "reason": "span_changed"})

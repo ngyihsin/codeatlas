@@ -121,8 +121,12 @@ def compute_span_hashes(code_root: str, symbols: list["Symbol"]) -> None:
         except OSError:
             continue
         ordered = sorted(syms, key=lambda s: s.line)
-        for i, s in enumerate(ordered):
-            end = ordered[i + 1].line - 1 if i + 1 < len(ordered) else len(lines)
+        starts = sorted({s.line for s in ordered})
+        nxt = {ln: starts[i + 1] for i, ln in enumerate(starts[:-1])}
+        for s in ordered:
+            # co-located tags (ctags plain + qualified) are one code object: the
+            # span runs to the next *distinct* start line, not the twin tag.
+            end = nxt.get(s.line, len(lines) + 1) - 1
             span = "\n".join(lines[max(s.line - 1, 0):max(end, s.line)])
             s.span_hash = hashlib.sha256(span.encode()).hexdigest()[:12]
 

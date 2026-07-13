@@ -281,8 +281,8 @@ class KB:
         k = min(k, BUDGET)
         legs = [[{**r, "kind": "symbol"} for r in self.relevant_code(query, k=k)],
                 self.find_recipe(query), self.find_case(query),
-                self.find_feature(query)]
-        for leg, kind in zip(legs, ("symbol", "recipe", "case", "feature")):
+                self.find_feature(query), self.find_findings(query=query, limit=3)]
+        for leg, kind in zip(legs, ("symbol", "recipe", "case", "feature", "finding")):
             for r in leg:
                 r.setdefault("kind", kind)
         out, i = [], 0
@@ -292,6 +292,20 @@ class KB:
                     out.append(l[i])
             i += 1
         return out
+
+    def record_finding(self, text: str, symbol_ids: list | None = None,
+                       kind: str = "observation", force: bool = False) -> dict:
+        # The M layer's ONE write path (unified spec §4.2). Guardrails live in
+        # kb.memory; confidence is hardcoded speculation — agents never verify.
+        from . import memory
+        return memory.record_finding(self.dir, text, symbol_ids=symbol_ids or [],
+                                     kind=kind, force=force)
+
+    def find_findings(self, query: str = "", symbol: str = "",
+                      status: str = "active", limit: int = 10) -> list[dict]:
+        from . import memory
+        return memory.find_findings(self.dir, query=query, symbol=symbol,
+                                    status=status, limit=min(limit, BUDGET))
 
     def build_info(self, name: str = "") -> list[dict]:
         # The build system as knowledge (kb.buildsys): targets/options/packages.
@@ -340,9 +354,26 @@ TOOLS = [
      "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
     {"name": "find_feature", "description": "Curated capability records (L3 features): what does subsystem X provide.",
      "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
-    {"name": "search_semantic", "description": "Unified retrieval across symbols+recipes+cases+features; rows tagged kind.",
+    {"name": "search_semantic", "description": "Unified retrieval across symbols+recipes+cases+features+findings; rows tagged kind.",
      "inputSchema": {"type": "object", "properties": {
          "query": {"type": "string"}, "k": {"type": "integer"}}, "required": ["query"]}},
+    {"name": "record_finding", "description": (
+        "WRITE: store an agent finding in the memory layer. Record non-obvious "
+        "discoveries a future session would waste time re-deriving: gotchas, dead "
+        "ends, root-cause hypotheses, surprising couplings. Do NOT record facts "
+        "already in the KB, trivial observations, or step-by-step logs. Findings "
+        "are speculation until a human promotes them."),
+     "inputSchema": {"type": "object", "properties": {
+         "text": {"type": "string", "maxLength": 2000},
+         "symbol_ids": {"type": "array", "items": {"type": "string"}},
+         "kind": {"type": "string", "enum": ["observation", "gotcha", "dead_end",
+                                             "root_cause_hypothesis"]},
+         "force": {"type": "boolean"}}, "required": ["text"]}},
+    {"name": "find_findings", "description": "Search agent memory (uncurated findings; speculation — weigh accordingly).",
+     "inputSchema": {"type": "object", "properties": {
+         "query": {"type": "string"}, "symbol": {"type": "string"},
+         "status": {"type": "string", "enum": ["active", "stale", "promoted", "rejected"]},
+         "limit": {"type": "integer"}}}},
     {"name": "review_status", "description": "Verification status for a symbol.",
      "inputSchema": {"type": "object", "properties": {"symbol": {"type": "string"}}, "required": ["symbol"]}},
 ]

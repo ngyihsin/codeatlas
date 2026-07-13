@@ -1,6 +1,7 @@
 # kb — L1/L2/L3 knowledge-base pipeline (ML-runtime codebases)
 
-The runnable implementation of `docs/research/digital-colleague-kb-spec.md`: a structured,
+The runnable implementation of `docs/research/digital-colleague-kb-spec.md` and the
+[CodeAtlas Unified Architecture Spec](../../docs/research/codeatlas-unified-spec.md) (L1/L2/L3+M): a structured,
 machine-readable, human-reviewed knowledge layer over large C/C++ ML-runtime codebases, so AI
 "digital colleagues" can locate code and apply the institutional knowledge needed to change it.
 It is an **ETL pipeline, not a doc set** — judged on token cost + freshness.
@@ -54,7 +55,7 @@ step that needs an agent backend — see *Running on your own codebase* below.
 | **L2 evidence lint** (make bluffing impossible) | `kb/lint.py` | `python -m kb.lint <summaries> --code <root>` | ✅ rejects fold>20, code-claim-without-`[Lxx]`, out-of-range refs |
 | **L2 summary generator** (spawns an AI agent per node) | `kb/l2.py` | `python -m kb.l2 build <l1_dir> <code> <out> --backend claude [--granularity symbol --top-n N]` | ✅ real run over ONNX Runtime; file- and **per-symbol** summaries; lint self-repair loop; bluffs quarantined |
 | **Incremental hash + fold firewall** | `kb/incremental.py` | `python -m kb.incremental demo` | ✅ recompute only the dirty sub-tree; cascade stops at stable folds |
-| **MCP retrieval server** (MCP 2025-06-18, paginated) | `kb/mcp_server.py` | `KB_DIR=<out> python -m kb.mcp_server [--http PORT]` | ✅ 11 tools (`find_symbol`+L2 / `relevant_code` / `find_op` / `get_summary` / `find_tests` / `trace_callers` / `find_recipe` / `get_recipe_steps` / `what_changed` / `review_status` / `build_info`) + resources + cursor pagination (no silent truncation) |
+| **MCP retrieval server** (MCP 2025-06-18, paginated) | `kb/mcp_server.py` | `KB_DIR=<out> python -m kb.mcp_server [--http PORT]` | ✅ 16 tools: 14 read (`find_symbol`+L2 / `relevant_code` / `search_semantic` / `find_op` / `get_summary` / `find_tests` / `trace_callers` / `find_recipe` / `get_recipe_steps` / `find_case` / `find_feature` / `what_changed` / `review_status` / `build_info`) + 2 write (`record_finding` / `find_findings`) + resources + cursor pagination (no silent truncation) |
 | **L1 tests index** | `kb/l1.py` | same build | ✅ `tests.jsonl`; `find_tests(symbol)` (real ORT: Clip→clip_test.cc) |
 | **L1 incremental edges** (Glean ownership) | `kb/l1.py`, `kb/incremental.py` | same build | ✅ per-file hashes; re-derive changed files only; `kb.incremental plan` |
 | **L2 faithfulness/eval harness** | `kb/eval.py` | `python -m kb.eval run <summaries> --code <root>` | ✅ claim-decompose + per-claim entailment; coverage; no BLEU/ROUGE |
@@ -62,6 +63,9 @@ step that needs an agent backend — see *Running on your own codebase* below.
 | **Drift sampler** | `kb/drift.py` | `python -m kb.drift sample <kb> <code>` | ✅ fresh_rate SLO; flags silent staleness |
 | **L3 recipe semantic search** | `kb/recipes.py` + `kb/embed.py` + `find_recipe` | via MCP | ✅ vector search; **MiniLM/ONNX embedder** (`KB_MINILM_DIR`, HashEmbedder fallback); sqlite-vec still a future drop-in |
 | **L3 recipe mining** | `kb/mine_recipes.py` | `python -m kb.mine_recipes <repo>` | ✅ clusters git history into candidate `draft` recipes for review |
+| **L3 cases/features** (institutional knowledge) | `kb/knowledge.py` | via MCP `find_case`/`find_feature`/`search_semantic` | ✅ YAML records + hybrid retrieval (exact ticket lookup short-circuits; vector leg with paraphrase-recall gates per spec §6.2) |
+| **M memory layer** (agent write-back) | `kb/memory.py` | `python -m kb.memory list/show/promote/reject` | ✅ `memory.sqlite` (PRIMARY, WAL; rebuilds never touch it); `record_finding` guardrails (cap/dedup/dangling); staleness via span_hash; promotion prints draft Case YAML for a human |
+| **Consolidated verify** | `kb/drift.py` | `python -m kb.drift verify <kb> <code>` | ✅ file freshness + per-symbol span drift + L3 link integrity + finding staleness |
 | **Build-system knowledge** (targets/deps/options) | `kb/buildsys.py` | `python -m kb.buildsys <code> <out>` | ✅ CMake **File API** (exact; same configure-only run as compdb) with a static structural scan fallback (tagged partial); served via `build_info`; joined into `find_symbol` as `build_target` |
 | **Precise call-graph tier** | `kb/scip_ingest.py` + `kb/compdb.py` | `python -m kb.scip_ingest build <code> auto <out>` | ✅ live scip-clang validated; innermost-scope caller resolution; `auto` derives `compile_commands.json` itself (CMake configure-only / Meson / make dry-run / synthesized fallback) |
 
@@ -161,11 +165,11 @@ clang-grade edges with `python -m kb.scip_ingest build $CODE auto /tmp/kb` — `
 fallback, honestly tagged) so there is no manual build step. Needs `scip-clang` + `scip`
 on PATH for the indexing itself.
 
-Run the tests: `python -m pytest -q`  (67 pass; 1 skipped without scip-clang).
+Run the tests: `python -m pytest -q`  (83 pass; 2 skipped without scip-clang / KB_MINILM_DIR).
 
 ## Verification (production-quality gate)
 
-- **`pytest`: 67 pass, 1 skipped** (ops extraction, pagerank distribution, lint good/bad, hash
+- **`pytest`: 83 pass, 2 skipped** (ops extraction, pagerank distribution, lint good/bad, hash
   stability, firewall cascade, MCP tools + pagination, L2 generate / self-repair / quarantine /
   entailment-gate / cache-integrity, scip innermost-caller, buildsys (File API / static scan / fallback-on-configure-failure / MCP build_info / find_symbol build-target join), compdb auto-derivation (cmake
   configure-only / make dry-run parser / synthesized fallback), embedder + recipe mining,
@@ -215,16 +219,18 @@ framework/kb/
     retrieve.py      # relevant_code: hybrid lexical + graph + importance retrieval
     eval.py          # faithfulness harness: claim-decompose + per-claim entailment, coverage
     review.py        # human-review ladder: draft -> reviewed -> battle-tested + evidence anchors
-    drift.py         # freshness sampler (fresh_rate SLO; flags silent staleness)
+    drift.py         # freshness sampler + consolidated verify (spans/links/findings)
     recipes.py       # L3 vector search (get_embedder: MiniLM/ONNX or HashEmbedder)
     embed.py         # MiniLM/ONNX embedder + self-contained WordPiece tokenizer
     mine_recipes.py  # mine candidate L3 recipes from git history
+    knowledge.py     # L3 cases/features: YAML records + hybrid retrieval
+    memory.py        # M layer: memory.sqlite findings + curation CLI
     compdb.py        # derive compile_commands.json (cmake configure-only/meson/make -n/synth)
     buildsys.py      # build-system map: CMake File API (exact) / static scan (partial)
     scip_ingest.py   # precise (xref:precise) call-graph tier from scip-clang
-    mcp_server.py    # MCP 2025-06-18 server: 11 tools + resources + pagination (stdio/HTTP)
+    mcp_server.py    # MCP 2025-06-18 server: 16 tools (14 read + 2 write) + resources + pagination (stdio/HTTP)
   scripts/fetch_minilm.sh       # lay out KB_MINILM_DIR from allowlisted URLs (route B)
   fixtures/mini-runtime/        # tiny C++ exercising each op macro (deterministic tests)
   fixtures/recipes/*.yaml       # seed L3 recipes (add-an-op, fix-a-dispatch-bug)
-  tests/test_kb.py              # 67 tests
+  tests/test_kb.py              # 83 tests
 ```

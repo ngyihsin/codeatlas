@@ -1044,3 +1044,99 @@ def test_case_synonym_recall_gate_minilm(tmp_path):
     kb = KB(_knowledge_kb(tmp_path))
     rows = kb.find_case("int8 overflow bug in the clamping operator")
     assert "qnn-1041-clip-saturation" in [r["id"] for r in rows[:5]]
+
+
+# --------------------------------------------------- Task B: memory layer (M)
+from kb import memory as kbmem                               # noqa: E402
+
+
+def _mem_kb(tmp_path):
+    kb_dir = tmp_path / "kb"
+    kb_dir.mkdir()
+    (kb_dir / "symbols.jsonl").write_text(json.dumps(
+        {"id": "a.cc:Real:1", "name": "Real", "path": "a.cc", "line": 1,
+         "span_hash": "aaaaaaaaaaaa"}) + "\n")
+    return str(kb_dir)
+
+
+def test_record_finding_guardrails(tmp_path):
+    kb_dir = _mem_kb(tmp_path)
+    r = kbmem.record_finding(kb_dir, "Real thing", symbol_ids=["Real", "Ghost"])
+    assert r["status"] == "recorded" and r["dangling_symbol_ids"] == ["Ghost"]
+    assert "error" in kbmem.record_finding(kb_dir, "x" * 2001)
+    assert "error" in kbmem.record_finding(kb_dir, "ok", kind="opinion")
+    assert "error" in kbmem.record_finding(kb_dir, "   ")
+
+
+def test_record_finding_dedup_and_force(tmp_path):
+    kb_dir = _mem_kb(tmp_path)
+    first = kbmem.record_finding(kb_dir, "the dispatcher caches kernels by opset version")
+    dup = kbmem.record_finding(kb_dir, "dispatcher caches kernels by the opset version")
+    assert dup["duplicate_of"] == first["id"] and dup["status"] == "skipped"
+    forced = kbmem.record_finding(kb_dir, "dispatcher caches kernels by the opset version",
+                                  force=True)
+    assert forced["status"] == "recorded"
+
+
+def test_finding_confidence_is_always_speculation(tmp_path):
+    kb_dir = _mem_kb(tmp_path)
+    fid = kbmem.record_finding(kb_dir, "hypothesis", kind="root_cause_hypothesis")["id"]
+    (f,) = kbmem.find_findings(kb_dir)
+    assert f["confidence"] == "speculation" and f["id"] == fid   # §1.3: never verified
+
+
+def test_finding_staleness_on_span_change(tmp_path):
+    kb_dir = _mem_kb(tmp_path)
+    kbmem.record_finding(kb_dir, "anchored to Real", symbol_ids=["Real"])
+    # simulate an index rebuild where Real's span changed
+    (tmp_path / "kb" / "symbols.jsonl").write_text(json.dumps(
+        {"id": "a.cc:Real:1", "name": "Real", "path": "a.cc", "line": 1,
+         "span_hash": "bbbbbbbbbbbb"}) + "\n")
+    stale = kbmem.mark_stale(kb_dir)
+    assert len(stale) == 1
+    assert kbmem.find_findings(kb_dir) == []                     # excluded by default
+    assert len(kbmem.find_findings(kb_dir, status="stale")) == 1  # never deleted
+
+
+@pytest.mark.skipif(not HAS_CTAGS, reason="ctags not installed")
+def test_index_rebuild_never_touches_memory(tmp_path):
+    out = str(tmp_path / "kb")
+    l1.build(FIX, out)
+    fid = kbmem.record_finding(out, "primary storage survives rebuilds")["id"]
+    l1.build(FIX, out)                                           # full rebuild
+    assert [f["id"] for f in kbmem.find_findings(out)] == [fid]  # invariant §1.2
+
+
+def test_promote_prints_yaml_never_writes_cases(tmp_path):
+    kb_dir = _mem_kb(tmp_path)
+    fid = kbmem.record_finding(kb_dir, "the fix", kind="root_cause_hypothesis",
+                               symbol_ids=["Real"])["id"]
+    res = kbmem.promote(kb_dir, fid)
+    assert "root_cause: >" in res["draft_case_yaml"]             # §5 mapping
+    assert "confidence: speculation" in res["draft_case_yaml"]
+    assert not os.path.isdir(os.path.join(kb_dir, "cases"))      # human commits it
+    (f,) = kbmem.find_findings(kb_dir, status="promoted")
+    assert f["id"] == fid
+    fid2 = kbmem.record_finding(kb_dir, "wrong turn", kind="dead_end")["id"]
+    assert kbmem.reject(kb_dir, fid2)["status"] == "rejected"
+
+
+def test_search_semantic_includes_findings(tmp_path):
+    kb_dir = _mem_kb(tmp_path)
+    kbmem.record_finding(kb_dir, "quantized clip saturates at boundary zero points")
+    rows = KB(kb_dir).search_semantic("clip saturation", k=8)
+    assert any(r["kind"] == "finding" for r in rows)
+
+
+@pytest.mark.skipif(not HAS_CTAGS, reason="ctags not installed")
+def test_colocated_tags_share_span_hash(tmp_path):
+    # ctags emits plain + qualified tags at one line; both must hash the full
+    # body span, not collapse to the signature line (staleness would miss edits).
+    out = str(tmp_path / "kb")
+    l1.build(FIX, out)
+    hashes = {}
+    for l in open(os.path.join(out, "symbols.jsonl")):
+        s = json.loads(l)
+        if s["name"].split("::")[-1] == "clamp_index":
+            hashes[s["name"]] = s["span_hash"]
+    assert len(set(hashes.values())) == 1 and len(hashes) >= 2
