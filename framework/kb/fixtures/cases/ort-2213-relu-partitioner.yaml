@@ -1,0 +1,18 @@
+id: ort-2213-relu-partitioner
+ticket: ORT-2213
+title: Relu nodes fall back to CPU because the partitioner never claims them
+status: resolved
+url: https://tracker.example/ORT-2213
+confidence: speculation
+root_cause: >
+  The backend registered a Relu kernel but the partitioner's supported-ops table
+  was not updated, so the graph partitioner never assigned Relu nodes to the
+  execution provider and they silently ran on the host CPU path.
+fix_summary: >
+  Added Relu to the partitioner support table next to the kernel registration and
+  asserted in a test that the node assignment report contains no CPU fallback.
+lessons:
+  - Registering a kernel is necessary but not sufficient; the partitioner must claim the node.
+  - Watch the node assignment report in tests, not just numerical outputs.
+affected_symbols: [ReluBuilder]
+affected_modules: [qnn]

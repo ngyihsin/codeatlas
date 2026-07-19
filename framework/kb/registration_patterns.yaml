@@ -1,0 +1,88 @@
+# registration_patterns.yaml — how to extract op registrations from each ML runtime.
+#
+# The spec's "single most valuable table": op registration is macro-generated, so plain
+# parsers miss it. Each entry is a regex with named groups mapped to ops.jsonl fields
+# (op_name, domain, version, provider, kernel_path). Add a framework by adding entries —
+# no code change. Fields not captured by a regex fall back to the entry's defaults.
+#
+# Verify a new pattern with:  python -m kb.l1 ops <path-with-that-macro> -
+patterns:
+  # ---- ONNX Runtime ----
+  - macro: ONNX_OPERATOR_KERNEL_EX
+    framework: onnxruntime
+    # ONNX_OPERATOR_KERNEL_EX(name, domain, version, provider, ...)
+    regex: 'ONNX_OPERATOR_KERNEL_EX\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*,\s*(?P<domain>[A-Za-z_:]\w*)\s*,\s*(?P<version>\d+)\s*,\s*(?P<provider>[A-Za-z_]\w*)'
+
+  - macro: ONNX_CPU_OPERATOR_KERNEL
+    framework: onnxruntime
+    provider: kCpuExecutionProvider
+    domain: kOnnxDomain
+    # ONNX_CPU_OPERATOR_KERNEL(name, version, ...)
+    regex: 'ONNX_CPU_OPERATOR_KERNEL\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*,\s*(?P<version>\d+)'
+
+  - macro: ONNX_CPU_OPERATOR_TYPED_KERNEL
+    framework: onnxruntime
+    provider: kCpuExecutionProvider
+    domain: kOnnxDomain
+    # ONNX_CPU_OPERATOR_TYPED_KERNEL(name, version, type, ...)
+    regex: 'ONNX_CPU_OPERATOR_TYPED_KERNEL\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*,\s*(?P<version>\d+)\s*,\s*(?P<type>[A-Za-z_]\w*)'
+
+  - macro: ONNX_CPU_OPERATOR_VERSIONED_KERNEL
+    framework: onnxruntime
+    provider: kCpuExecutionProvider
+    domain: kOnnxDomain
+    # ONNX_CPU_OPERATOR_VERSIONED_KERNEL(name, startVer, endVer, ...)
+    regex: 'ONNX_CPU_OPERATOR_VERSIONED_KERNEL\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*,\s*(?P<version>\d+)\s*,\s*(?P<end_version>\d+)'
+
+  - macro: ONNX_CPU_OPERATOR_VERSIONED_TYPED_KERNEL
+    framework: onnxruntime
+    provider: kCpuExecutionProvider
+    domain: kOnnxDomain
+    # ONNX_CPU_OPERATOR_VERSIONED_TYPED_KERNEL(name, startVer, endVer, type, ...)
+    regex: 'ONNX_CPU_OPERATOR_VERSIONED_TYPED_KERNEL\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*,\s*(?P<version>\d+)\s*,\s*(?P<end_version>\d+)\s*,\s*(?P<type>[A-Za-z_]\w*)'
+
+  - macro: ONNX_OPERATOR_TYPED_KERNEL_EX
+    framework: onnxruntime
+    # ONNX_OPERATOR_TYPED_KERNEL_EX(name, domain, version, provider, type, ...)
+    regex: 'ONNX_OPERATOR_TYPED_KERNEL_EX\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*,\s*(?P<domain>[A-Za-z_:]\w*)\s*,\s*(?P<version>\d+)\s*,\s*(?P<provider>[A-Za-z_]\w*)'
+
+  - macro: ONNX_OPERATOR_VERSIONED_KERNEL_EX
+    framework: onnxruntime
+    # ONNX_OPERATOR_VERSIONED_KERNEL_EX(name, domain, startVer, endVer, provider, ...)
+    regex: 'ONNX_OPERATOR_VERSIONED_KERNEL_EX\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*,\s*(?P<domain>[A-Za-z_:]\w*)\s*,\s*(?P<version>\d+)\s*,\s*(?P<end_version>\d+)\s*,\s*(?P<provider>[A-Za-z_]\w*)'
+
+  # ---- ExecuTorch ----
+  - macro: EXECUTORCH_LIBRARY
+    framework: executorch
+    provider: executorch
+    # EXECUTORCH_LIBRARY(ns, "op.name", fn)
+    regex: 'EXECUTORCH_LIBRARY\s*\(\s*(?P<domain>[A-Za-z_]\w*)\s*,\s*"(?P<op_name>[^"]+)"'
+
+  # ---- Qualcomm QNN ----
+  - macro: REGISTER_QNN_OP_BUILDER
+    framework: qnn
+    provider: QNN
+    # REGISTER_QNN_OP_BUILDER(OpName, BuilderClass)
+    regex: 'REGISTER_QNN_OP_BUILDER\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*,\s*(?P<builder>[A-Za-z_]\w*)'
+
+  # ---- PyTorch / ATen ----
+  - macro: TORCH_IMPL_FUNC
+    framework: pytorch
+    provider: structured
+    domain: aten
+    # TORCH_IMPL_FUNC(name_out) — structured-kernel impl for aten::name
+    regex: 'TORCH_IMPL_FUNC\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*\)'
+
+  - macro: REGISTER_DISPATCH
+    framework: pytorch
+    provider: dispatch_stub
+    domain: aten
+    # REGISTER_DISPATCH(op_stub, &kernel_fn) — per-arch kernel via DispatchStub
+    regex: 'REGISTER_DISPATCH\s*\(\s*(?P<op_name>[A-Za-z_]\w*)\s*,\s*&?\s*(?P<kernel>[A-Za-z_][\w:<>]*)'
+
+  - macro: m.impl
+    framework: pytorch
+    provider: torch_library
+    domain: aten
+    # m.impl("op.overload", fn) inside a TORCH_LIBRARY_IMPL block
+    regex: 'm\.impl\s*\(\s*"(?P<op_name>[^"]+)"'

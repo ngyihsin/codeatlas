@@ -1,0 +1,17 @@
+# L3 feature — curated capability record (unified spec §2.1).
+# Schema: id, title, status, summary_fold/preview/full, affected_symbols[],
+#         affected_modules[], url, confidence.
+id: elementwise-cpu-kernels
+title: Elementwise CPU kernel family (Add, Abs, Clip)
+status: shipped
+url: https://tracker.example/FEAT-77
+confidence: speculation
+summary_fold: CPU elementwise kernels with shared unary/binary dispatch.
+summary_full: >
+  The CPU provider implements elementwise operators through two shared
+  entry points, ElementwiseUnary and ElementwiseBinary, so each operator
+  registration (Add, Abs, Clip) only supplies its scalar functor. Clamp
+  index handling is centralized in clamp_index so boundary semantics stay
+  identical across every kernel in the family.
+affected_symbols: [AddCompute, ClipCompute, ElementwiseBinary, ElementwiseUnary]
+affected_modules: [cpu]

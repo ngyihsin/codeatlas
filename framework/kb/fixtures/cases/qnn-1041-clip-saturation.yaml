@@ -1,0 +1,23 @@
+# L3 case — curated incident/fix history (unified spec §2.1).
+# Schema: id, ticket, title, status, root_cause, fix_summary, lessons[],
+#         affected_symbols[], affected_modules[], url, confidence.
+id: qnn-1041-clip-saturation
+ticket: QNN-1041
+title: Quantized Clip output saturates when zero-point sits near the range edge
+status: resolved
+url: https://tracker.example/QNN-1041
+confidence: speculation   # promoted to verified only by a human edit + review
+root_cause: >
+  The quantized Clip builder reused the input tensor's scale and zero-point for
+  the output, but after clamping the effective dynamic range shrinks; requantizing
+  with the old parameters pushed values at the max boundary past 255 and they
+  wrapped to the minimum.
+fix_summary: >
+  Recompute output scale/zero-point from the clamp bounds (min, max) instead of
+  inheriting the input quantization; add a saturation regression test with a
+  zero-point of 254.
+lessons:
+  - Never inherit quantization parameters across an op that changes dynamic range.
+  - Boundary zero-points (0, 255) deserve dedicated regression inputs.
+affected_symbols: [ClipCompute, clamp_index]
+affected_modules: [cpu]
